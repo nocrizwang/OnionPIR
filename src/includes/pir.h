@@ -35,7 +35,7 @@ public:
                 throw std::invalid_argument("Size of database is not a power of 2");
             }
             dims_.push_back(first_dim);
-            for (uint i = 1; i < ndim; i++) {
+            for (int i = 1; i < ndim; i++) {
                 dims_.push_back(2);
             }
             seal_params_.set_poly_modulus_degree(DatabaseConstants::PolyDegree);

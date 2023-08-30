@@ -31,8 +31,8 @@ seal::Decryptor* PirClient::get_decryptor() {
 PirQuery PirClient::generate_query(std::uint64_t entry_index) {
 
   // Get the corresponding index of the plaintext in the database
-  uint64_t plaintext_index = get_database_plain_index(entry_index);
-  std::vector<uint64_t> query_indexes = get_query_indexes(plaintext_index);
+  size_t plaintext_index = get_database_plain_index(entry_index);
+  std::vector<size_t> query_indexes = get_query_indexes(plaintext_index);
   uint64_t poly_degree = params_.poly_modulus_degree();
   
   // The number of bits is equal to the size of the first dimension
