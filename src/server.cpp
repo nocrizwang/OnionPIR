@@ -65,7 +65,7 @@ std::vector<seal::Ciphertext> PirServer::evaluate_first_dim_delayed_mod(std::vec
   size_t coeff_count = seal_params.poly_modulus_degree();
   size_t coeff_mod_count = coeff_modulus.size();
   size_t encrypted_ntt_size = selection_vector[0].size();
-  // std::cout << encrypted_ntt_size << std::endl;
+  std::cout << "encrypted_ntt_size: " << encrypted_ntt_size << std::endl;
   seal::Ciphertext ct_acc;
   for (int col_id = 0; col_id < size_of_other_dims; ++col_id){
     std::vector<std::vector<uint128_t>> buffer(encrypted_ntt_size, std::vector<uint128_t>(coeff_count * coeff_mod_count, 0));
@@ -167,7 +167,6 @@ void PirServer::set_database(std::vector<Entry> new_db) {
   db_ = Database();
 
   // Flattens data into vector of u8s and pads each entry with 0s to entry_size number of bytes.
-  size_t total_size = 0;
   for (Entry & entry : new_db){
     if (entry.size() <= pir_params_.get_entry_size()) {
       entry.resize(pir_params_.get_entry_size(), 0);
@@ -175,8 +174,8 @@ void PirServer::set_database(std::vector<Entry> new_db) {
       throw std::invalid_argument("Entry size is too large");
     }
   }
+
   std::vector<uint8_t> data;
-  data.reserve(total_size);
   for (const Entry & entry : new_db) {
     data.insert(data.end(), entry.begin(), entry.end());
   }
@@ -188,20 +187,20 @@ void PirServer::set_database(std::vector<Entry> new_db) {
 void PirServer::set_database_from_bytes(const std::vector<uint8_t> & data) {
   // Get necessary parameters
   size_t bits_per_coeff = pir_params_.get_num_bits_per_coeff();
-  size_t num_bits_per_plaintext = pir_params_.get_num_bits_per_plaintext();
   size_t num_coeffs = pir_params_.get_seal_params().poly_modulus_degree();
+  size_t num_bits_per_plaintext = num_coeffs * bits_per_coeff;
 
   db_ = Database();
 
   auto data_iterator = data.begin();
   uint128_t data_buffer = 0;
   uint8_t data_offset = 0;
-  uint128_t coeff_mask = (1 << (bits_per_coeff + 1)) - 1;
+  const uint128_t coeff_mask = (1 << (bits_per_coeff + 1)) - 1;
 
   while (data_iterator != data.end()) {
-    seal::Plaintext plaintext(pir_params_.get_seal_params().poly_modulus_degree());
+    seal::Plaintext plaintext(num_coeffs);
     for (int i = 0; i < num_coeffs && data_iterator != data.end(); ++i){ 
-      for (int j = 0 ; j < bits_per_coeff && data_iterator != data.end(); j += 8){
+      while (data_offset < bits_per_coeff && data_iterator != data.end()){
         data_buffer += *(data_iterator++) << data_offset;
         data_offset += 8;
       }

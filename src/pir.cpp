@@ -70,7 +70,7 @@ size_t PirParams::get_num_bits_per_plaintext() const{
 
 void print_entry(Entry entry){ 
   for (auto & val : entry) {
-    std::cout << +val << ", ";
+    std::cout << (int) val << ", ";
   }
   std::cout << std::endl;
 }

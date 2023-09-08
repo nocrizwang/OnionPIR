@@ -5,7 +5,7 @@
 
 int main() {
   // PirParams pir_params(1048576, 8, 1000000, 3);
-  PirParams pir_params(2048, 2, 1000, 2);
+  PirParams pir_params(2048, 2, 2000000, 5);
   const int client_id = 0;
   pir_params.print_values();
   PirServer server(pir_params);
@@ -18,10 +18,13 @@ int main() {
   std::cout<< " ===== Benchmark build =====" <<std::endl;
   #endif
 
-  std::vector<Entry> data(1000);
+  std::vector<Entry> data(pir_params.get_num_entries());
   for (auto & entry : data) {
     entry.push_back(255);
     entry.push_back(173);
+    entry.push_back(19);
+    entry.push_back(26);
+    entry.push_back(114);
     // entry.push_back(183);
   }
   server.set_database(data);
@@ -32,7 +35,9 @@ int main() {
   server.set_client_keys(client_id, client.create_galois_keys());
   server.set_client_decryptor(client_id, client.get_decryptor());
   std::cout << "Client registered" << std::endl;
-  auto result = server.make_query(client_id ,client.generate_query(5));
+
+  int id = 5;
+  auto result = server.make_query(client_id ,client.generate_query(id));
 
   std::cout << "Result: " << std::endl;
   auto decrypted_result = client.decrypt_result(result);
@@ -41,7 +46,7 @@ int main() {
       std::cout << res.to_string() << std::endl;
     }
   #endif
-  print_entry(client.get_entry_from_plaintext(5, decrypted_result[0]));
+  print_entry(client.get_entry_from_plaintext(id, decrypted_result[0]));
 
   #ifdef _BENCHMARK
     std::cout << "Noise budget remaining: " << client.get_decryptor()->invariant_noise_budget(result[0]) << " bits" << std::endl;
