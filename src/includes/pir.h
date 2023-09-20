@@ -34,6 +34,7 @@ public:
             if ((first_dim & (first_dim - 1))) {
                 throw std::invalid_argument("Size of database is not a power of 2");
             }
+            
             dims_.push_back(first_dim);
             for (int i = 1; i < ndim; i++) {
                 dims_.push_back(2);
@@ -43,6 +44,10 @@ public:
             // seal_params_.set_plain_modulus(PlainModulus::Batching(DatabaseConstants::PolyDegree, DatabaseConstants::PlaintextModBits));
             seal_params_.set_coeff_modulus({DatabaseConstants::CiphertextMod1, DatabaseConstants::CiphertextMod2});
             seal_params_.set_plain_modulus(DatabaseConstants::PlaintextMod);
+
+            if (DBSize_*get_num_entries_per_plaintext() < num_entries) {
+                throw std::invalid_argument("Number of entries in database is too large");
+            }
         } 
     seal::EncryptionParameters get_seal_params() const;
     void print_values();
