@@ -5,7 +5,7 @@
 
 int main() {
   // PirParams pir_params(1048576, 8, 1000000, 3);
-  PirParams pir_params(2048, 2, 2000000, 5);
+  PirParams pir_params(256, 2, 1500000, 5, 5);
   const int client_id = 0;
   pir_params.print_values();
   PirServer server(pir_params);
@@ -36,8 +36,8 @@ int main() {
   server.set_client_decryptor(client_id, client.get_decryptor());
   std::cout << "Client registered" << std::endl;
 
-  int id = 5;
-  auto result = server.make_query(client_id ,client.generate_query(id));
+  int id = 1350000;
+  auto result = server.make_query(client_id, client.generate_query(id));
 
   std::cout << "Result: " << std::endl;
   auto decrypted_result = client.decrypt_result(result);

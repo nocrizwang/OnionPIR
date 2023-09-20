@@ -36,7 +36,12 @@ PirQuery PirClient::generate_query(std::uint64_t entry_index) {
   uint64_t poly_degree = params_.poly_modulus_degree();
   
   // The number of bits is equal to the size of the first dimension
-  uint64_t bits_per_ciphertext = dims_[0];
+  
+  uint64_t msg_size = dims_[0] + pir_params_.get_l() * (dims_.size() -1) * 2;
+  uint64_t bits_per_ciphertext = 1;
+  
+  while(bits_per_ciphertext < msg_size) bits_per_ciphertext*=2;
+
   uint64_t size_of_other_dims = DBSize_ / dims_[0];
   std::vector<seal::Plaintext> plain_query;
   plain_query.push_back(seal::Plaintext(poly_degree));

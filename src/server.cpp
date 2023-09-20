@@ -95,7 +95,7 @@ std::vector<seal::Ciphertext> PirServer::evaluate_first_dim_delayed_mod(std::vec
   return result;
 }
 
-std::vector<seal::Ciphertext> PirServer::expand_first_query_dim(uint32_t client_id, seal::Ciphertext ciphertext) {
+std::vector<seal::Ciphertext> PirServer::expand_query(uint32_t client_id, seal::Ciphertext ciphertext) {
   seal::EncryptionParameters params = pir_params_.get_seal_params();
   std::vector<Ciphertext> expanded_query;
   int poly_degree = params.poly_modulus_degree();
@@ -150,7 +150,7 @@ void PirServer::set_client_keys(uint32_t client_id, seal::GaloisKeys client_key)
   }
 
 std::vector<seal::Ciphertext> PirServer::make_query(uint32_t client_id, PirQuery query) {
-  std::vector<seal::Ciphertext> first_dim_selection_vector = expand_first_query_dim(client_id, query[0]);
+  std::vector<seal::Ciphertext> first_dim_selection_vector = expand_query(client_id, query[0]);
 
   std::vector<seal::Ciphertext> result =  evaluate_first_dim_delayed_mod(first_dim_selection_vector);
   // std::vector<seal::Ciphertext> result =  evaluate_first_dim(first_dim_selection_vector);
@@ -159,7 +159,7 @@ std::vector<seal::Ciphertext> PirServer::make_query(uint32_t client_id, PirQuery
 }
 
 std::vector<seal::Ciphertext> PirServer::make_query_delayed_mod(uint32_t client_id, PirQuery query) {
-  std::vector<seal::Ciphertext> first_dim_selection_vector = expand_first_query_dim(client_id, query[0]);
+  std::vector<seal::Ciphertext> first_dim_selection_vector = expand_query(client_id, query[0]);
 
   std::vector<seal::Ciphertext> result =  evaluate_first_dim_delayed_mod(first_dim_selection_vector);
 
@@ -167,7 +167,7 @@ std::vector<seal::Ciphertext> PirServer::make_query_delayed_mod(uint32_t client_
 }
 
 std::vector<seal::Ciphertext> PirServer::make_query_regular_mod(uint32_t client_id, PirQuery query) {
-  std::vector<seal::Ciphertext> first_dim_selection_vector = expand_first_query_dim(client_id, query[0]);
+  std::vector<seal::Ciphertext> first_dim_selection_vector = expand_query(client_id, query[0]);
 
   std::vector<seal::Ciphertext> result =  evaluate_first_dim(first_dim_selection_vector);
 
