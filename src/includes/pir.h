@@ -20,12 +20,14 @@ public:
         @param ndim - Number of database dimensions
         @param num_entries - Number of entries in database
         @param entry_size - Size of each entry in bytes
+        @param l - Parameter l for GSW scheme
         */
-    PirParams(uint64_t DBSize, uint64_t ndim, uint64_t num_entries, uint64_t entry_size): 
+    PirParams(uint64_t DBSize, uint64_t ndim, uint64_t num_entries, uint64_t entry_size, uint64_t l): 
         DBSize_(DBSize),
         seal_params_(seal::EncryptionParameters(seal::scheme_type::bfv)),
         num_entries_(num_entries),
-        entry_size_(entry_size)
+        entry_size_(entry_size),
+        l_(l)
         {
             uint64_t first_dim = DBSize >> (ndim - 1);
             if (first_dim < 128) {
@@ -48,6 +50,10 @@ public:
             if (DBSize_*get_num_entries_per_plaintext() < num_entries) {
                 throw std::invalid_argument("Number of entries in database is too large");
             }
+
+            auto modulus = seal_params_.coeff_modulus();
+            int bits = std::max(modulus[0].bit_count(), modulus[1].bit_count());
+            base_log2_ = (bits + l - 1) / l;
         } 
     seal::EncryptionParameters get_seal_params() const;
     void print_values();
@@ -63,6 +69,8 @@ public:
 
 private:
     uint64_t DBSize_;                    // number of plaintexts in the database
+    uint64_t l_;                         // l for GSW
+    uint64_t base_log2_;                         // log of base for GSW
     std::vector<uint64_t> dims_;                      // Number of dimensions
     size_t num_entries_;                 // Number of entries in database
     size_t entry_size_;                  // Size of single entry in bytes

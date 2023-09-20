@@ -21,6 +21,8 @@ void PirParams::print_values() {
     std::cout << "                           PIR PARAMETERS                              " << std::endl;
     std::cout << "====================================================================" << std::endl;
     std::cout << "  num_entries_                             = " << num_entries_ << std::endl;
+    std::cout << "  l_                                       = " << l_ << std::endl;
+    std::cout << "  base_log2_                               = " << base_log2_ << std::endl;
     std::cout << "  entry_size_                              = " << entry_size_ << std::endl;
     std::cout << "  DBSize_ (num plaintexts in database)     = " << DBSize_ << std::endl;
     std::cout << "  DBCapacity (max num of entries)          = " << DBSize_*get_num_entries_per_plaintext() << std::endl;
