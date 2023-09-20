@@ -100,8 +100,14 @@ std::vector<seal::Ciphertext> PirServer::expand_first_query_dim(uint32_t client_
   std::vector<Ciphertext> expanded_query;
   int poly_degree = params.poly_modulus_degree();
 
-  // Expand ciphertext into 2^expansion_factor individual ciphertexts (number of bits) = size of first dimension
-  int expansion_factor = std::log2(dims_[0]);
+  // Expand ciphertext into 2^expansion_factor individual ciphertexts (number of bits) 
+  int exp = dims_[0] + pir_params_.get_l() * (dims_.size() -1) * 2;
+
+  int expansion_factor = 0;
+  
+  while( (1<< expansion_factor) < exp){
+    expansion_factor++;
+  }
 
   std::vector<Ciphertext> cipher_vec((size_t) pow(2,expansion_factor));
   cipher_vec[0] = ciphertext;
@@ -124,6 +130,10 @@ std::vector<seal::Ciphertext> PirServer::expand_first_query_dim(uint32_t client_
   }
 
   for (auto & ciphertext : cipher_vec) {
+    // std::cout << "degree: " << ciphertext.poly_modulus_degree() <<std::endl;
+    // seal::Plaintext c(ciphertext.poly_modulus_degree());
+    // client_decryptors_[client_id]->decrypt(ciphertext, c);
+    // std::cout << c.to_string() << std::endl;
     evaluator_.transform_to_ntt_inplace(ciphertext);
   }
 
@@ -145,9 +155,9 @@ std::vector<seal::Ciphertext> PirServer::make_query(uint32_t client_id, PirQuery
   std::vector<seal::Ciphertext> result =  evaluate_first_dim_delayed_mod(first_dim_selection_vector);
   // std::vector<seal::Ciphertext> result =  evaluate_first_dim(first_dim_selection_vector);
 
-
   return result;
 }
+
 std::vector<seal::Ciphertext> PirServer::make_query_delayed_mod(uint32_t client_id, PirQuery query) {
   std::vector<seal::Ciphertext> first_dim_selection_vector = expand_first_query_dim(client_id, query[0]);
 
@@ -155,6 +165,7 @@ std::vector<seal::Ciphertext> PirServer::make_query_delayed_mod(uint32_t client_
 
   return result;
 }
+
 std::vector<seal::Ciphertext> PirServer::make_query_regular_mod(uint32_t client_id, PirQuery query) {
   std::vector<seal::Ciphertext> first_dim_selection_vector = expand_first_query_dim(client_id, query[0]);
 

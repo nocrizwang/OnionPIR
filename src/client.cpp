@@ -37,9 +37,7 @@ PirQuery PirClient::generate_query(std::uint64_t entry_index) {
   
   // The number of bits is equal to the size of the first dimension
   uint64_t bits_per_ciphertext = dims_[0];
-
   uint64_t size_of_other_dims = DBSize_ / dims_[0];
-
   std::vector<seal::Plaintext> plain_query;
   plain_query.push_back(seal::Plaintext(poly_degree));
 
@@ -47,15 +45,24 @@ PirQuery PirClient::generate_query(std::uint64_t entry_index) {
   // We set the corresponding coefficient to the inverse so the value of the expanded ciphertext will be 1
   uint64_t inverse = 0;
   seal::util::try_invert_uint_mod(bits_per_ciphertext, params_.plain_modulus(), inverse);
- 
-  plain_query[0][plaintext_index / size_of_other_dims] = inverse;
   
+  int ptr = 0;
+  for(int i = 0; i < query_indexes.size(); i++){
+    int rep = i == 0 ? 1 : pir_params_.get_l();
+    for (int j=0;j<rep;j++) {
+      //std::cout << query_indexes[i]<<' '<<ptr + query_indexes[i]*rep + j << std::endl;
+      plain_query[0][ptr + query_indexes[i]*rep + j] = inverse;
+    }
+    ptr += dims_[i] * rep;
+  }
+
   PirQuery query;
   for (int i = 0; i < plain_query.size(); i++) {
     seal::Ciphertext x_encrypted;
     encryptor_->encrypt(plain_query[i], x_encrypted);
     query.push_back(x_encrypted);
   }
+  
   return query;
 }
 
@@ -95,9 +102,10 @@ std::vector<size_t> PirClient::get_query_indexes(size_t plaintext_index){
   std::vector<size_t> query_indexes;
   size_t index = plaintext_index;
   size_t size_of_remaining_dims = DBSize_;
+
   for (auto dim_size : dims_ ){
     size_of_remaining_dims /= dim_size;
-    query_indexes.push_back(index / dim_size);
+    query_indexes.push_back(index / size_of_remaining_dims);
     index = index % size_of_remaining_dims;
   }
 

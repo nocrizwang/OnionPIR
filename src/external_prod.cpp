@@ -71,6 +71,12 @@ void decomp_rlwe128(seal::Ciphertext ct, const uint64_t l, std::shared_ptr<seal:
   size_t coeff_mod_count = coeff_modulus.size();
   size_t ct_poly_count = ct.size();
   assert(ct_poly_count == 2);
+  
+  for(auto mod: coeff_modulus){
+    if ((mod.value() >> (l * base_log2)) != 0) {
+        throw std::invalid_argument("L * base_log2 does not cover the coefficient modulus");
+    }
+  }
 
   // Start decomposing row wise. Note that the modulus of each row is base^(l-row)
   for (int j = 0; j < ct_poly_count; j++){

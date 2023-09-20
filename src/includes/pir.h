@@ -66,6 +66,8 @@ public:
     size_t get_num_bits_per_plaintext() const;
     size_t get_num_entries() const;
     size_t get_entry_size() const;
+    uint64_t get_l() const;
+    uint64_t get_base_log2() const;
 
 private:
     uint64_t DBSize_;                    // number of plaintexts in the database

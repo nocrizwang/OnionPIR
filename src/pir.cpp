@@ -14,7 +14,13 @@ std::vector<uint64_t> PirParams::get_dims() const {
   return dims_;
 }
 
+uint64_t PirParams::get_l() const {
+  return l_;
+}
 
+uint64_t PirParams::get_base_log2() const {
+  return base_log2_;
+}
 
 void PirParams::print_values() {
     std::cout << "====================================================================" << std::endl;
