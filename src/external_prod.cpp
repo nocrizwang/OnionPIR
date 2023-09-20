@@ -62,7 +62,7 @@ void decomp_rlwe128(seal::Ciphertext ct, const uint64_t l, std::shared_ptr<seal:
 
   // Get parameters
   const uint64_t base = UINT64_C(1) << base_log2;
-  const uint64_t mask = base -1 ;
+  const uint64_t mask = base - 1;
 
   const auto & context_data = context->get_context_data(ct.parms_id());
   auto &parms = context_data->parms();
@@ -71,26 +71,20 @@ void decomp_rlwe128(seal::Ciphertext ct, const uint64_t l, std::shared_ptr<seal:
   size_t coeff_mod_count = coeff_modulus.size();
   size_t ct_poly_count = ct.size();
   assert(ct_poly_count == 2);
-  int total_bits; 
 
   // Start decomposing row wise. Note that the modulus of each row is base^(l-row)
   for (int j = 0; j < ct_poly_count; j++){
-    total_bits = (context_data->total_coeff_modulus_bit_count());
     uint64_t *poly_ptr = ct.data(j);
 
     // This decomposes each coefficient by taking the modulus of the coefficient by the base for that given row.
-    for (int p = 0; p < l; p++) {
+    for (int p = l-1; p >=0; p--) {
       std::vector<uint64_t> row_coefficients(coeff_count * coeff_mod_count);
-      const int shift_amount = ((total_bits) - ((p + 1) * base_log2));
+      const int shift_amount = p * base_log2;
 
-      for (size_t k = 0; k < coeff_mod_count * coeff_count; k = k + 2) {
-        auto ptr(allocate_uint(2, pool));
-        ptr[0] = 0;
-        ptr[1] = 1;
-        seal::util::right_shift_uint128(&poly_ptr[k], shift_amount, ptr.get());
-        uint64_t temp1 = ptr[0] & mask;
-        row_coefficients[k] = temp1;
+      for (size_t k = 0; k < coeff_mod_count * coeff_count; k ++) {
+        row_coefficients[k] = (poly_ptr[k] >> shift_amount) & mask;
       }
+      
       output.push_back(std::move(row_coefficients));
     }
   }
