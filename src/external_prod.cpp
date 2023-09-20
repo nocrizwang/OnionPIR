@@ -14,10 +14,12 @@ std::shared_ptr<seal::SEALContext::ContextData> &context_data, int l, size_t ct_
 
     auto ntt_tables = context_data->small_ntt_tables();
 
-    // Here we compute a cross product between the transpose of the decomposed BFV (a 2l vector of polynomials) 
-    // and the GSW ciphertext (a 2lx2 matrix of polynomials) to obtain a size-2 vector of polynomials, which is exactly our result ciphertext.
-    // We use an NTT multiplication to speed up polynomial multiplication, assuming that both the GSWCiphertext and 
-    // decomposed bfv is in polynomial coefficient representation.
+    // Here we compute a cross product between the transpose of the decomposed BFV
+    // (a 2l vector of polynomials) and the GSW ciphertext (a 2lx2 matrix of
+    // polynomials) to obtain a size-2 vector of polynomials, which is exactly our
+    // result ciphertext. We use an NTT multiplication to speed up polynomial
+    // multiplication, assuming that both the GSWCiphertext and decomposed bfv is
+    // in polynomial coefficient representation.
 
     for (auto & poly : gsw_enc) {
       seal::util::CoeffIter gsw_poly_ptr(poly);
@@ -44,10 +46,9 @@ std::shared_ptr<seal::SEALContext::ContextData> &context_data, int l, size_t ct_
 
       for (int mod_id = 0; mod_id < coeff_mod_count; mod_id++){
         auto mod_idx = (mod_id * coeff_count);
-        
+        auto mod = static_cast<__uint128_t>(coeff_modulus[mod_id].value());
         for(int coeff_id = 0; coeff_id < coeff_count; coeff_id++){
-          pt_ptr[coeff_id + mod_idx] = pt_ptr[coeff_id + mod_idx] % static_cast<__uint128_t>(coeff_modulus[mod_id].value());
-          ct_ptr[coeff_id + mod_idx] = static_cast<uint64_t>(pt_ptr[coeff_id + mod_idx]);
+          ct_ptr[coeff_id + mod_idx] = static_cast<uint64_t>(pt_ptr[coeff_id + mod_idx] % mod);
         }
       }
     }
