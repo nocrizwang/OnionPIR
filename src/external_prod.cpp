@@ -54,9 +54,8 @@ std::shared_ptr<seal::SEALContext::ContextData> &context_data, int l, size_t ct_
     }
 }
 
-void decomp_rlwe128(seal::Ciphertext ct, const uint64_t l, std::shared_ptr<seal::SEALContext> context, 
+void decomp_rlwe(seal::Ciphertext ct, const uint64_t l, std::shared_ptr<seal::SEALContext> context, 
   std::vector<std::vector<uint64_t>> &output, int base_log2, seal::util::MemoryPool &pool) {
-  // Reserve space in our output 
   assert(output.size() == 0);
   output.reserve(2*l);
 

@@ -95,6 +95,12 @@ std::vector<seal::Ciphertext> PirServer::evaluate_first_dim_delayed_mod(std::vec
   return result;
 }
 
+std::vector<seal::Ciphertext> PirServer::evaluate_gsw_product(std::vector<seal::Ciphertext> & result, std::vector<seal::Ciphertext> & selection_vector) {
+
+
+  return result;
+}
+
 std::vector<seal::Ciphertext> PirServer::expand_query(uint32_t client_id, seal::Ciphertext ciphertext) {
   seal::EncryptionParameters params = pir_params_.get_seal_params();
   std::vector<Ciphertext> expanded_query;
@@ -150,10 +156,13 @@ void PirServer::set_client_keys(uint32_t client_id, seal::GaloisKeys client_key)
   }
 
 std::vector<seal::Ciphertext> PirServer::make_query(uint32_t client_id, PirQuery query) {
-  std::vector<seal::Ciphertext> first_dim_selection_vector = expand_query(client_id, query[0]);
+  std::vector<seal::Ciphertext> query_vector = expand_query(client_id, query[0]);
 
-  std::vector<seal::Ciphertext> result =  evaluate_first_dim_delayed_mod(first_dim_selection_vector);
-  // std::vector<seal::Ciphertext> result =  evaluate_first_dim(first_dim_selection_vector);
+  std::vector<seal::Ciphertext> result = evaluate_first_dim_delayed_mod(query_vector);
+
+  for(int i=1; i< dims_.size(); i++){
+    result = evaluate_gsw_product(result, query_vector);
+  }
 
   return result;
 }

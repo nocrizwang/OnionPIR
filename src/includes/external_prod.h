@@ -31,7 +31,7 @@ void external_product(GSWCiphertext &gsw_enc,
   @param base_log2 - value of log2(GSW base) (base must be a power of 2)
   @param pool - SEAL memory pool
 */
-void decomp_rlwe128(
+void decomp_rlwe(
     seal::Ciphertext ct, const uint64_t l,
     std::shared_ptr<seal::SEALContext::ContextData> context_data,
     std::vector<std::vector<uint64_t>> &output, int base_log2,

@@ -20,6 +20,7 @@ class PirServer {
     std::vector<seal::Ciphertext> make_query(uint32_t client_id, PirQuery query);
     std::vector<seal::Ciphertext> make_query_delayed_mod(uint32_t client_id, PirQuery query);
     std::vector<seal::Ciphertext> make_query_regular_mod(uint32_t client_id, PirQuery query);
+    std::vector<seal::Ciphertext> evaluate_gsw_product(std::vector<seal::Ciphertext> & result, std::vector<seal::Ciphertext> & selection_vector);
     void set_client_keys(uint32_t client_id, seal::GaloisKeys client_key);
     void set_client_decryptor(uint32_t client_id, seal::Decryptor* client_decryptor);
 
@@ -36,7 +37,7 @@ class PirServer {
     /*!
       Expands the first query ciphertext into a selection vector of ciphertexts where the ith ciphertext encodes the ith bit of the first query ciphertext.
     */
-    std::vector<seal::Ciphertext> expand_first_query_dim(uint32_t client_id, seal::Ciphertext ciphertext);
+    std::vector<seal::Ciphertext> expand_query(uint32_t client_id, seal::Ciphertext ciphertext);
     /*!
       Performs a cross product between the first selection vector and the database.
     */
