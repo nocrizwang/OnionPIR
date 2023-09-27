@@ -3,9 +3,9 @@
 #include "utils.h"
 #include <cassert>
 
-void external_product(GSWCiphertext &gsw_enc, seal::Ciphertext bfv,
-                      std::shared_ptr<seal::SEALContext> context, int l,
-                      size_t ct_poly_size, seal::Ciphertext &res_ct) {
+void gsw::external_product(GSWCiphertext &gsw_enc, seal::Ciphertext bfv,
+                           std::shared_ptr<seal::SEALContext> context,
+                           size_t ct_poly_size, seal::Ciphertext &res_ct) {
 
   const auto &context_data = context->get_context_data(bfv.parms_id());
   auto &parms2 = context_data->parms();
@@ -17,7 +17,7 @@ void external_product(GSWCiphertext &gsw_enc, seal::Ciphertext bfv,
 
   std::vector<std::vector<uint64_t>> decomposed_bfv;
 
-  decomp_rlwe(bfv, l, context, decomposed_bfv, 2);
+  decomp_rlwe(bfv, context, decomposed_bfv);
   // Here we compute a cross product between the transpose of the decomposed BFV
   // (a 2l vector of polynomials) and the GSW ciphertext (a 2lx2 matrix of
   // polynomials) to obtain a size-2 vector of polynomials, which is exactly our
@@ -62,10 +62,9 @@ void external_product(GSWCiphertext &gsw_enc, seal::Ciphertext bfv,
   }
 }
 
-void decomp_rlwe(seal::Ciphertext ct, const uint64_t l,
-                 std::shared_ptr<seal::SEALContext> context,
-                 std::vector<std::vector<uint64_t>> output,
-                 const uint64_t base_log2) {
+void gsw::decomp_rlwe(seal::Ciphertext ct,
+                      std::shared_ptr<seal::SEALContext> context,
+                      std::vector<std::vector<uint64_t>> output) {
 
   assert(output.size() == 0);
   output.reserve(2 * l);
@@ -123,9 +122,9 @@ void decomp_rlwe(seal::Ciphertext ct, const uint64_t l,
   }
 }
 
-void query_to_gsw(std::vector<seal::Ciphertext> query, const uint64_t l,
-                  std::shared_ptr<seal::SEALContext::ContextData> context_data,
-                  GSWCiphertext &output, const uint64_t base_log2) {
+void gsw::query_to_gsw(std::vector<seal::Ciphertext> query,
+                       seal::SEALContext const &context,
+                       GSWCiphertext &output) {
   assert(query.size() == l);
   for (int i = 0; i < l; i++) {
     // query[i]

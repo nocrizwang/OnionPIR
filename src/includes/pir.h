@@ -42,9 +42,10 @@ public:
                 dims_.push_back(2);
             }
             seal_params_.set_poly_modulus_degree(DatabaseConstants::PolyDegree);
+            
+            seal_params_.set_coeff_modulus(CoeffModulus::BFVDefault(DatabaseConstants::PolyDegree));
             // seal_params_.set_coeff_modulus(CoeffModulus::Create(DatabaseConstants::PolyDegree, {55, 50, 50, 60}));
             // seal_params_.set_plain_modulus(PlainModulus::Batching(DatabaseConstants::PolyDegree, DatabaseConstants::PlaintextModBits));
-            seal_params_.set_coeff_modulus({DatabaseConstants::CiphertextMod1, DatabaseConstants::CiphertextMod2});
             seal_params_.set_plain_modulus(DatabaseConstants::PlaintextMod);
 
             if (DBSize_*get_num_entries_per_plaintext() < num_entries) {
@@ -54,6 +55,9 @@ public:
             auto modulus = seal_params_.coeff_modulus();
             int bits = std::max(modulus[0].bit_count(), modulus[1].bit_count());
             base_log2_ = (bits + l - 1) / l;
+
+            gsw::l = l;
+            gsw::base_log2 = base_log2_;
         } 
     seal::EncryptionParameters get_seal_params() const;
     void print_values();
