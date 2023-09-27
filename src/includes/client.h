@@ -2,7 +2,7 @@
 
 #include "pir.h"
 #include "server.h"
-
+#include "external_prod.h"
 class PirClient {
 public:
     PirClient(const PirParams &pirparms);
@@ -23,6 +23,8 @@ public:
     */
     Entry get_entry_from_plaintext(size_t entry_index, seal::Plaintext plaintext);
 
+    void test_external_product();
+    GSWCiphertext generate_gsw_from_key();
 private:
     seal::EncryptionParameters params_;
     PirParams pir_params_;
@@ -34,7 +36,6 @@ private:
     seal::Evaluator* evaluator_;
     seal::KeyGenerator* keygen_;
     seal::SEALContext* context_;
-    seal::PublicKey public_key_;
     const seal::SecretKey* secret_key_;
     /*!
         Gets the corresponding plaintext index in a database for a given entry index
