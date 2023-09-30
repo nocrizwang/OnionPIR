@@ -11,9 +11,7 @@ void run_tests() {
   // test_pir();
 }
 
-void test_external_product() {
-
-}
+void test_external_product() {}
 
 void test_pir() {
   PirParams pir_params(256, 2, 1500000, 5, 5);

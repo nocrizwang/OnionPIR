@@ -60,6 +60,7 @@ public:
 
     gsw::l = l;
     gsw::base_log2 = base_log2_;
+    gsw::context = new seal::SEALContext(seal_params_);
   }
   seal::EncryptionParameters get_seal_params() const;
   void print_values();

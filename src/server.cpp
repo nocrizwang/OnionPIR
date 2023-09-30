@@ -115,15 +115,15 @@ PirServer::evaluate_gsw_product(std::vector<seal::Ciphertext> &result,
   auto block_size = result.size() / selection_vector.size();
 
   for (int i = 0; i < block_size; i++) {
-    gsw::external_product(selection_vector[0], result[i], context_,
-                          result[0].size(), result[i]);
+    gsw::external_product(selection_vector[0], result[i], result[0].size(),
+                          result[i]);
     result_vector.push_back(result[i]);
   }
 
   for (int i = 1; i < selection_vector.size(); i++) {
     for (int j = 0; j < block_size; j++) {
-      gsw::external_product(selection_vector[i], result[j + i * block_size], context_,
-                          result[0].size(), result[j + i * block_size]);
+      gsw::external_product(selection_vector[i], result[j + i * block_size],
+                            result[0].size(), result[j + i * block_size]);
       evaluator_.add_inplace(result_vector[j], result[j + i * block_size]);
     }
   }
@@ -208,8 +208,7 @@ std::vector<seal::Ciphertext> PirServer::make_query(uint32_t client_id,
       for (int k = 0; k < l; k++) {
         lwe_vector.push_back(query_vector[ptr++]);
       }
-      gsw::query_to_gsw(lwe_vector, client_gsw_keys_[client_id], context_,
-                        gsw_vector[j]);
+      gsw::query_to_gsw(lwe_vector, client_gsw_keys_[client_id], gsw_vector[j]);
     }
 
     result = evaluate_gsw_product(result, gsw_vector);
