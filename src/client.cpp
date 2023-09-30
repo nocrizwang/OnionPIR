@@ -202,8 +202,7 @@ PirQuery PirClient::generate_query(std::uint64_t entry_index) {
   // We set the corresponding coefficient to the inverse so the value of the
   // expanded ciphertext will be 1
   uint64_t inverse = 0, plain_modulus = params_.plain_modulus().value();
-  seal::util::try_invert_uint_mod(bits_per_ciphertext, plain_modulus,
-                                  inverse);
+  seal::util::try_invert_uint_mod(bits_per_ciphertext, plain_modulus, inverse);
 
   int ptr = 0;
   plain_query[0][ptr + query_indexes[0]] = inverse;
@@ -214,7 +213,10 @@ PirQuery PirClient::generate_query(std::uint64_t entry_index) {
 
   for (int i = 1; i < query_indexes.size(); i++) {
     for (int j = 0; j < l; j++) {
-      plain_query[0][ptr + query_indexes[i] * l + j] = inverse * (((uint128_t)1)<<((l-1-j) * base_log2)%plain_modulus) % plain_modulus;
+      plain_query[0][ptr + query_indexes[i] * l + j] =
+          inverse *
+          (((uint128_t)1) << ((l - 1 - j) * base_log2) % plain_modulus) %
+          plain_modulus;
     }
     ptr += dims_[i] * l;
   }
