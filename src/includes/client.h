@@ -1,49 +1,53 @@
 #pragma once
 
+#include "external_prod.h"
 #include "pir.h"
 #include "server.h"
-#include "external_prod.h"
 class PirClient {
 public:
-    PirClient(const PirParams &pirparms);
-    ~PirClient();
+  PirClient(const PirParams &pirparms);
+  ~PirClient();
 
-    /*!
-        Generates an OnionPIR query corresponding to the plaintext that encodes the given entry index.
-    */
-    PirQuery generate_query(std::uint64_t entry_index);
+  /*!
+      Generates an OnionPIR query corresponding to the plaintext that encodes
+     the given entry index.
+  */
+  PirQuery generate_query(std::uint64_t entry_index);
 
-    seal::GaloisKeys create_galois_keys();
+  seal::GaloisKeys create_galois_keys();
 
-    std::vector<seal::Plaintext> decrypt_result(std::vector<seal::Ciphertext> reply);
-    uint32_t client_id;
-    seal::Decryptor* get_decryptor();
-    /*!
-        Retrieves an entry from the plaintext containing the entry.
-    */
-    Entry get_entry_from_plaintext(size_t entry_index, seal::Plaintext plaintext);
+  std::vector<seal::Plaintext>
+  decrypt_result(std::vector<seal::Ciphertext> reply);
+  uint32_t client_id;
+  seal::Decryptor *get_decryptor();
+  /*!
+      Retrieves an entry from the plaintext containing the entry.
+  */
+  Entry get_entry_from_plaintext(size_t entry_index, seal::Plaintext plaintext);
 
-    void test_external_product();
-    GSWCiphertext generate_gsw_from_key();
+  void test_external_product();
+  GSWCiphertext generate_gsw_from_key();
+
 private:
-    seal::EncryptionParameters params_;
-    PirParams pir_params_;
-    uint64_t DBSize_;
-    std::vector<uint64_t> dims_;
+  seal::EncryptionParameters params_;
+  PirParams pir_params_;
+  uint64_t DBSize_;
+  std::vector<uint64_t> dims_;
 
-    seal::Encryptor* encryptor_;
-    seal::Decryptor* decryptor_;
-    seal::Evaluator* evaluator_;
-    seal::KeyGenerator* keygen_;
-    seal::SEALContext* context_;
-    const seal::SecretKey* secret_key_;
-    /*!
-        Gets the corresponding plaintext index in a database for a given entry index
-    */
-    size_t get_database_plain_index(size_t entry_index);
+  seal::Encryptor *encryptor_;
+  seal::Decryptor *decryptor_;
+  seal::Evaluator *evaluator_;
+  seal::KeyGenerator *keygen_;
+  seal::SEALContext *context_;
+  const seal::SecretKey *secret_key_;
+  /*!
+      Gets the corresponding plaintext index in a database for a given entry
+     index
+  */
+  size_t get_database_plain_index(size_t entry_index);
 
-    /*!
-        Gets the query indexes for a given plaintext
-    */
-    std::vector<size_t> get_query_indexes(size_t plaintext_index);
+  /*!
+      Gets the query indexes for a given plaintext
+  */
+  std::vector<size_t> get_query_indexes(size_t plaintext_index);
 };
