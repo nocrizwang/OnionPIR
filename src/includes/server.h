@@ -3,6 +3,7 @@
 #include "seal/seal.h"
 #include "pir.h"
 #include "client.h"
+#include "external_prod.h"
 
 typedef std::vector<seal::Plaintext> Database;
 
@@ -20,17 +21,17 @@ class PirServer {
     std::vector<seal::Ciphertext> make_query(uint32_t client_id, PirQuery query);
     std::vector<seal::Ciphertext> make_query_delayed_mod(uint32_t client_id, PirQuery query);
     std::vector<seal::Ciphertext> make_query_regular_mod(uint32_t client_id, PirQuery query);
-    std::vector<seal::Ciphertext> evaluate_gsw_product(std::vector<seal::Ciphertext> & result, std::vector<seal::Ciphertext> & selection_vector);
-    void set_client_keys(uint32_t client_id, seal::GaloisKeys client_key);
-    void set_client_decryptor(uint32_t client_id, seal::Decryptor* client_decryptor);
+    std::vector<seal::Ciphertext> evaluate_gsw_product(std::vector<seal::Ciphertext> & result, std::vector<GSWCiphertext> & selection_vector);
+    void set_client_galois_key(uint32_t client_id, seal::GaloisKeys client_key);
+    void set_client_gsw_key(uint32_t client_id, GSWCiphertext &&gsw_key);
 
   private:
     uint64_t DBSize_;
     seal::SEALContext context_;
     seal::Evaluator evaluator_;
     std::vector<uint64_t> dims_;
-    std::map<uint32_t, seal::GaloisKeys> client_keys_;
-    std::map<uint32_t, seal::Decryptor*> client_decryptors_;
+    std::map<uint32_t, seal::GaloisKeys> client_galois_keys_;
+    std::map<uint32_t, GSWCiphertext> client_gsw_keys_;
     Database db_;
     PirParams pir_params_;
 

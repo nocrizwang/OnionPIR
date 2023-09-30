@@ -4,6 +4,7 @@
 #include "seal/seal.h"
 #include <vector>
 #include <stdexcept>
+#include "external_prod.h"
 
 using namespace seal::util;
 using namespace seal;

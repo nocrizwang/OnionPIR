@@ -3,11 +3,17 @@
 #include <iostream>
 #include <chrono>
 
+namespace gsw {
+  uint64_t l;
+  uint64_t base_log2;
+}
+
 int main() {
   // PirParams pir_params(1048576, 8, 1000000, 3);
   PirParams pir_params(256, 2, 1500000, 5, 5);
   const int client_id = 0;
   pir_params.print_values();
+
   PirServer server(pir_params);
   // server.gen_data();
 
@@ -32,10 +38,13 @@ int main() {
 
   PirClient client(pir_params);
   std::cout << "Client initialized" << std::endl;
-  server.set_client_keys(client_id, client.create_galois_keys());
-  server.set_client_decryptor(client_id, client.get_decryptor());
+
+  server.set_client_galois_key(client_id, client.create_galois_keys());
+  server.set_client_gsw_key(client_id, client.generate_gsw_from_key());
+  
   std::cout << "Client registered" << std::endl;
 
+  client.test_external_product();
   int id = 1350000;
   auto result = server.make_query(client_id, client.generate_query(id));
 
@@ -43,7 +52,7 @@ int main() {
   auto decrypted_result = client.decrypt_result(result);
   #ifdef _DEBUG
     for (auto & res : decrypted_result) {
-      std::cout << res.to_string() << std::endl;
+      //std::cout << res.to_string() << std::endl;
     }
   #endif
   print_entry(client.get_entry_from_plaintext(id, decrypted_result[0]));

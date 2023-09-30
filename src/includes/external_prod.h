@@ -6,8 +6,8 @@
 typedef std::vector<std::vector<uint64_t>> GSWCiphertext;
 
 namespace gsw {
-uint64_t l;
-uint64_t base_log2;
+extern uint64_t l;
+extern uint64_t base_log2;
 
 /*!
   Computes the external product between a GSW ciphertext and a decomposed BFV

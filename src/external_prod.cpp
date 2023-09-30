@@ -126,7 +126,28 @@ void gsw::query_to_gsw(std::vector<seal::Ciphertext> query,
                        seal::SEALContext const &context,
                        GSWCiphertext &output) {
   assert(query.size() == l);
+  assert(output.size() == 0);
+  output.resize(2 * l);
+
+  const auto &context_data = context.get_context_data(query[0].parms_id());
+  auto &parms = context_data->parms();
+  auto &coeff_modulus = parms.coeff_modulus();
+  size_t coeff_count = parms.poly_modulus_degree();
+  size_t coeff_mod_count = coeff_modulus.size();
+
   for (int i = 0; i < l; i++) {
-    // query[i]
+    for (int j = 0; j < coeff_count * coeff_mod_count; j++) {
+      output[i].push_back(query[i].data()[j]);
+    }
+  }
+
+  for (int i = 0; i < l; i++) {
+    // external_product(output, query[i],
+    // std::make_shared<seal::SEALContext>(context), coeff_count, output[i +
+    // l]);
+
+    for (int j = 0; j < coeff_count * coeff_mod_count; j++) {
+      output[i].push_back(query[i].data()[j]);
+    }
   }
 }

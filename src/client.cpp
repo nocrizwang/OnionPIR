@@ -201,19 +201,22 @@ PirQuery PirClient::generate_query(std::uint64_t entry_index) {
   // Algorithm 1 from the OnionPIR Paper
   // We set the corresponding coefficient to the inverse so the value of the
   // expanded ciphertext will be 1
-  uint64_t inverse = 0;
-  seal::util::try_invert_uint_mod(bits_per_ciphertext, params_.plain_modulus(),
+  uint64_t inverse = 0, plain_modulus = params_.plain_modulus().value();
+  seal::util::try_invert_uint_mod(bits_per_ciphertext, plain_modulus,
                                   inverse);
 
   int ptr = 0;
-  for (int i = 0; i < query_indexes.size(); i++) {
-    int rep = i == 0 ? 1 : pir_params_.get_l();
-    for (int j = 0; j < rep; j++) {
-      // std::cout << query_indexes[i]<<' '<<ptr + query_indexes[i]*rep + j <<
-      // std::endl;
-      plain_query[0][ptr + query_indexes[i] * rep + j] = inverse;
+  plain_query[0][ptr + query_indexes[0]] = inverse;
+  ptr += dims_[0];
+
+  auto l = pir_params_.get_l();
+  auto base_log2 = pir_params_.get_base_log2();
+
+  for (int i = 1; i < query_indexes.size(); i++) {
+    for (int j = 0; j < l; j++) {
+      plain_query[0][ptr + query_indexes[i] * l + j] = inverse * (((uint128_t)1)<<((l-1-j) * base_log2)%plain_modulus) % plain_modulus;
     }
-    ptr += dims_[i] * rep;
+    ptr += dims_[i] * l;
   }
 
   PirQuery query;
