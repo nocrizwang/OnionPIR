@@ -3,6 +3,11 @@
 #include "utils.h"
 #include <cassert>
 
+namespace gsw {
+uint64_t l;
+uint64_t base_log2;
+} // namespace gsw
+
 void gsw::external_product(GSWCiphertext gsw_enc, seal::Ciphertext bfv,
                            seal::SEALContext const &context,
                            size_t ct_poly_size, seal::Ciphertext &res_ct) {
