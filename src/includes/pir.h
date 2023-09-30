@@ -54,7 +54,7 @@ public:
             }
 
             auto modulus = seal_params_.coeff_modulus();
-            int bits = std::max(modulus[0].bit_count(), modulus[1].bit_count());
+            int bits = modulus[0].bit_count() + modulus[1].bit_count();
             base_log2_ = (bits + l - 1) / l;
 
             gsw::l = l;

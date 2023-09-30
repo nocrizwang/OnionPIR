@@ -3,11 +3,11 @@
 #include "utils.h"
 #include <cassert>
 
-void gsw::external_product(GSWCiphertext &gsw_enc, seal::Ciphertext bfv,
-                           std::shared_ptr<seal::SEALContext> context,
+void gsw::external_product(GSWCiphertext gsw_enc, seal::Ciphertext bfv,
+                           seal::SEALContext const &context,
                            size_t ct_poly_size, seal::Ciphertext &res_ct) {
 
-  const auto &context_data = context->get_context_data(bfv.parms_id());
+  const auto &context_data = context.get_context_data(bfv.parms_id());
   auto &parms2 = context_data->parms();
   auto &coeff_modulus = parms2.coeff_modulus();
   size_t coeff_count = parms2.poly_modulus_degree();
@@ -37,9 +37,12 @@ void gsw::external_product(GSWCiphertext &gsw_enc, seal::Ciphertext bfv,
   // Use the delayed mod speedup
   std::vector<std::vector<uint128_t>> result(
       2, std::vector<uint128_t>(coeff_count * coeff_mod_count, 0));
+
+  std::cout << "GSW size " << gsw_enc.size() << std::endl;
   for (int k = 0; k < 2; ++k) {
     for (size_t j = 0; j < 2 * l; j++) {
-      seal::util::ConstCoeffIter encrypted_gsw_ptr(gsw_enc[k * 2 * l + j]);
+      seal::util::ConstCoeffIter encrypted_gsw_ptr(
+          gsw_enc[j].data() + k * coeff_count * coeff_mod_count);
       seal::util::ConstCoeffIter encrypted_rlwe_ptr(decomposed_bfv[j]);
       utils::multiply_poly_acum(encrypted_rlwe_ptr, encrypted_gsw_ptr,
                                 coeff_count * coeff_mod_count,
@@ -62,9 +65,8 @@ void gsw::external_product(GSWCiphertext &gsw_enc, seal::Ciphertext bfv,
   }
 }
 
-void gsw::decomp_rlwe(seal::Ciphertext ct,
-                      std::shared_ptr<seal::SEALContext> context,
-                      std::vector<std::vector<uint64_t>> output) {
+void gsw::decomp_rlwe(seal::Ciphertext ct, seal::SEALContext const &context,
+                      std::vector<std::vector<uint64_t>> &output) {
 
   assert(output.size() == 0);
   output.reserve(2 * l);
@@ -73,7 +75,7 @@ void gsw::decomp_rlwe(seal::Ciphertext ct,
   const uint64_t base = UINT64_C(1) << base_log2;
   const uint64_t mask = base - 1;
 
-  const auto &context_data = context->get_context_data(ct.parms_id());
+  const auto &context_data = context.get_context_data(ct.parms_id());
   auto &parms = context_data->parms();
   auto &coeff_modulus = parms.coeff_modulus();
   size_t coeff_count = parms.poly_modulus_degree();
@@ -84,17 +86,20 @@ void gsw::decomp_rlwe(seal::Ciphertext ct,
   seal::util::RNSBase *rns_base = context_data->rns_tool()->base_q();
   auto pool = seal::MemoryManager::GetPool();
 
-  for (auto mod : coeff_modulus) {
-    if ((mod.value() >> (l * base_log2)) != 0) {
-      throw std::invalid_argument(
-          "L * base_log2 does not cover the coefficient modulus");
-    }
-  }
+  // for (auto mod : coeff_modulus) {
+  //   std:: cout<<mod.value()<<' '<< l * base_log2<<std::endl;
+
+  //   if ((mod.value() >> (l * base_log2)) != 0) {
+  //     throw std::invalid_argument(
+  //         "L * base_log2 does not cover the coefficient modulus");
+  //   }
+  // }
 
   // Start decomposing row wise. Note that the modulus of each row is
   // base^(l-row)
 
   std::vector<uint64_t> data(coeff_count * coeff_mod_count);
+
   for (int j = 0; j < ct_poly_count; j++) {
     uint64_t *poly_ptr = ct.data(j);
 
@@ -117,13 +122,14 @@ void gsw::decomp_rlwe(seal::Ciphertext ct,
 
       rns_base->decompose_array(row.data(), coeff_count, pool);
 
-      output[j] = std::move(row);
+      output.push_back(std::move(row));
     }
   }
+  std::cout << "SIZE " << output.size() << std::endl;
 }
 
 void gsw::query_to_gsw(std::vector<seal::Ciphertext> query,
-                       seal::SEALContext const &context,
+                       GSWCiphertext gsw_key, seal::SEALContext const &context,
                        GSWCiphertext &output) {
   assert(query.size() == l);
   assert(output.size() == 0);
@@ -137,7 +143,10 @@ void gsw::query_to_gsw(std::vector<seal::Ciphertext> query,
 
   for (int i = 0; i < l; i++) {
     for (int j = 0; j < coeff_count * coeff_mod_count; j++) {
-      output[i].push_back(query[i].data()[j]);
+      output[i].push_back(query[i].data(0)[j]);
+    }
+    for (int j = 0; j < coeff_count * coeff_mod_count; j++) {
+      output[i].push_back(query[i].data(1)[j]);
     }
   }
 
@@ -145,9 +154,14 @@ void gsw::query_to_gsw(std::vector<seal::Ciphertext> query,
     // external_product(output, query[i],
     // std::make_shared<seal::SEALContext>(context), coeff_count, output[i +
     // l]);
-
+    std::cout << "query " << i << ' ' << query[i].poly_modulus_degree()
+              << std::endl;
+    external_product(gsw_key, query[i], context, coeff_count, query[i]);
     for (int j = 0; j < coeff_count * coeff_mod_count; j++) {
-      output[i].push_back(query[i].data()[j]);
+      output[i + l].push_back(query[i].data(0)[j]);
+    }
+    for (int j = 0; j < coeff_count * coeff_mod_count; j++) {
+      output[i + l].push_back(query[i].data(1)[j]);
     }
   }
 }

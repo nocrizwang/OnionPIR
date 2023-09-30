@@ -44,7 +44,7 @@ int main() {
 
   std::cout << "Client registered" << std::endl;
 
-  client.test_external_product();
+  //client.test_external_product();
   int id = 1350000;
   auto result = server.make_query(client_id, client.generate_query(id));
 

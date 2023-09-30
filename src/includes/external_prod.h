@@ -20,9 +20,9 @@ extern uint64_t base_log2;
   @param res_ct - output ciphertext
 */
 
-void external_product(GSWCiphertext &gsw_enc, seal::Ciphertext bfv,
-                      std::shared_ptr<seal::SEALContext> context,
-                      size_t ct_poly_size, seal::Ciphertext &res_ct);
+void external_product(GSWCiphertext gsw_enc, seal::Ciphertext bfv,
+                      seal::SEALContext const &context, size_t ct_poly_size,
+                      seal::Ciphertext &res_ct);
 
 /*!
   Performs a gadget decomposition of a size 2 BFV ciphertext into 2 sets of
@@ -35,19 +35,19 @@ void external_product(GSWCiphertext &gsw_enc, seal::Ciphertext bfv,
   vectors of polynomial coefficients
   @param pool - SEAL memory pool
 */
-void decomp_rlwe(seal::Ciphertext ct,
-                 std::shared_ptr<seal::SEALContext> context,
-                 std::vector<std::vector<uint64_t>> output);
+void decomp_rlwe(seal::Ciphertext ct, seal::SEALContext const &context,
+                 std::vector<std::vector<uint64_t>> &output);
 
 /*!
   Generates a GSW ciphertext from a BFV ciphertext query.
 
   @param query - input BFV ciphertext. Should be of size l * 2.
+  @param gsw_key - GSW encryption of -s
   @param context - SEAL context
   @param output - output to store the GSW ciphertext as a vector of vectors of
   polynomial coefficients
 */
-void query_to_gsw(std::vector<seal::Ciphertext> query,
+void query_to_gsw(std::vector<seal::Ciphertext> query, GSWCiphertext gsw_key,
                   seal::SEALContext const &context, GSWCiphertext &output);
 
 } // namespace gsw

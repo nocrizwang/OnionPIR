@@ -26,8 +26,8 @@ seal::Decryptor *PirClient::get_decryptor() { return decryptor_; }
 GSWCiphertext PirClient::generate_gsw_from_key() {
   GSWCiphertext gsw_enc;
   auto sk_ = secret_key_->data();
-  auto ntt_tables = context_->key_context_data()->small_ntt_tables();
-  auto coeff_modulus = context_->key_context_data()->parms().coeff_modulus();
+  auto ntt_tables = context_->first_context_data()->small_ntt_tables();
+  auto coeff_modulus = context_->first_context_data()->parms().coeff_modulus();
   auto coeff_mod_count = coeff_modulus.size();
 
   std::vector<uint64_t> sk_ntt(params_.poly_modulus_degree() * coeff_mod_count);
@@ -55,7 +55,7 @@ GSWCiphertext PirClient::generate_gsw_from_key() {
         for (int coeff_id = 0; coeff_id < coeff_count; coeff_id++) {
           ct_ptr[coeff_id + mod_idx] = static_cast<uint64_t>(
               (ct_ptr[coeff_id + mod_idx] + mod -
-               (sk_ntt[coeff_id + mod_idx] * coef % mod)) %
+               ((__uint128_t)sk_ntt[coeff_id + mod_idx] * coef % mod)) %
               mod);
         }
       }
