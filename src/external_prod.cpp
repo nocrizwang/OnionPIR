@@ -91,18 +91,6 @@ void gsw::decomp_rlwe(seal::Ciphertext ct, seal::SEALContext const &context,
   seal::util::RNSBase *rns_base = context_data->rns_tool()->base_q();
   auto pool = seal::MemoryManager::GetPool();
 
-  // for (auto mod : coeff_modulus) {
-  //   std:: cout<<mod.value()<<' '<< l * base_log2<<std::endl;
-
-  //   if ((mod.value() >> (l * base_log2)) != 0) {
-  //     throw std::invalid_argument(
-  //         "L * base_log2 does not cover the coefficient modulus");
-  //   }
-  // }
-
-  // Start decomposing row wise. Note that the modulus of each row is
-  // base^(l-row)
-
   std::vector<uint64_t> data(coeff_count * coeff_mod_count);
 
   for (int j = 0; j < ct_poly_count; j++) {
@@ -156,9 +144,6 @@ void gsw::query_to_gsw(std::vector<seal::Ciphertext> query,
   }
 
   for (int i = 0; i < l; i++) {
-    // external_product(output, query[i],
-    // std::make_shared<seal::SEALContext>(context), coeff_count, output[i +
-    // l]);
     std::cout << "query " << i << ' ' << query[i].poly_modulus_degree()
               << std::endl;
     external_product(gsw_key, query[i], context, coeff_count, query[i]);

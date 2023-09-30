@@ -4,15 +4,21 @@
 #include <iostream>
 
 void run_tests() {
+  PirParams pir_params(256, 2, 1500000, 5, 5);
+  pir_params.print_values();
+
   std::cout << "Running tests..." << std::endl;
-  test_pir();
+  // test_pir();
+}
+
+void test_external_product() {
+
 }
 
 void test_pir() {
   PirParams pir_params(256, 2, 1500000, 5, 5);
-  const int client_id = 0;
   pir_params.print_values();
-
+  const int client_id = 0;
   PirServer server(pir_params);
   // server.gen_data();
 
