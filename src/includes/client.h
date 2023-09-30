@@ -25,7 +25,6 @@ public:
   */
   Entry get_entry_from_plaintext(size_t entry_index, seal::Plaintext plaintext);
 
-  void test_external_product();
   GSWCiphertext generate_gsw_from_key();
 
 private:

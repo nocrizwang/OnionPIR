@@ -48,5 +48,5 @@ void decomp_rlwe(seal::Ciphertext ct,
 void query_to_gsw(std::vector<seal::Ciphertext> query, GSWCiphertext gsw_key,
                   GSWCiphertext &output);
 
-void encrypt_lwe_to_gsw();
+void encrypt_lwe_to_gsw(seal::Ciphertext ct);
 } // namespace gsw

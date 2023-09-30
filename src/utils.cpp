@@ -4,7 +4,6 @@ void utils::negacyclic_shift_poly_coeffmod(seal::util::ConstCoeffIter poly,
                                            size_t coeff_count, size_t shift,
                                            const seal::Modulus &modulus,
                                            seal::util::CoeffIter result) {
-  // Nothing to do
   if (shift == 0) {
     set_uint(poly, coeff_count, result);
     return;

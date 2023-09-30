@@ -155,16 +155,14 @@ void gsw::query_to_gsw(std::vector<seal::Ciphertext> query,
   }
 }
 
-// GSWCiphertext encrypt_lwe_to_gsw(seal::Ciphertext ct) {
+// void gsw::encrypt_lwe_to_gsw(seal::Ciphertext ct) {
 //   GSWCiphertext gsw_enc;
 
-//   std::vector<uint64_t> sk_ntt(params_.poly_modulus_degree() *
-//   coeff_mod_count);
-
-//   memcpy(sk_ntt.data(), sk_.data(),
-//          params_.poly_modulus_degree() * coeff_mod_count * sizeof(uint64_t));
-
-//   auto coeff_count = params_.poly_modulus_degree();
+//   const auto &context_data = context->get_context_data(ct.parms_id());
+//   auto &parms = context_data->parms();
+//   auto &coeff_modulus = parms.coeff_modulus();
+//   size_t coeff_count = parms.poly_modulus_degree();
+//   size_t coeff_mod_count = coeff_modulus.size();
 
 //   for (int poly_id = 1; poly_id >= 0; poly_id--) {
 //     for (int i = l - 1; i >= 0; i--) {
