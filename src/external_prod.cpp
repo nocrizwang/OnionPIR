@@ -9,6 +9,13 @@ uint64_t base_log2;
 seal::SEALContext const *context;
 } // namespace gsw
 
+// Here we compute a cross product between the transpose of the decomposed BFV
+// (a 2l vector of polynomials) and the GSW ciphertext (a 2lx2 matrix of
+// polynomials) to obtain a size-2 vector of polynomials, which is exactly our
+// result ciphertext. We use an NTT multiplication to speed up polynomial
+// multiplication, assuming that both the GSWCiphertext and decomposed bfv is in
+// polynomial coefficient representation.
+
 void gsw::external_product(GSWCiphertext gsw_enc, seal::Ciphertext bfv,
                            size_t ct_poly_size, seal::Ciphertext &res_ct) {
 
@@ -17,23 +24,20 @@ void gsw::external_product(GSWCiphertext gsw_enc, seal::Ciphertext bfv,
   auto &coeff_modulus = parms2.coeff_modulus();
   size_t coeff_count = parms2.poly_modulus_degree();
   size_t coeff_mod_count = coeff_modulus.size();
-
   auto ntt_tables = context_data->small_ntt_tables();
 
   std::vector<std::vector<uint64_t>> decomposed_bfv;
-
   decomp_rlwe(bfv, decomposed_bfv);
-  // Here we compute a cross product between the transpose of the decomposed BFV
-  // (a 2l vector of polynomials) and the GSW ciphertext (a 2lx2 matrix of
-  // polynomials) to obtain a size-2 vector of polynomials, which is exactly our
-  // result ciphertext. We use an NTT multiplication to speed up polynomial
-  // multiplication, assuming that both the GSWCiphertext and decomposed bfv is
-  // in polynomial coefficient representation.
 
   for (auto &poly : gsw_enc) {
-    seal::util::CoeffIter gsw_poly_ptr(poly);
+    seal::util::CoeffIter gsw_poly_ptr(poly.data());
     seal::util::ntt_negacyclic_harvey(gsw_poly_ptr, *ntt_tables);
+
+    seal::util::CoeffIter gsw_poly_ptr2(poly.data() +
+                                        coeff_count * coeff_mod_count);
+    seal::util::ntt_negacyclic_harvey(gsw_poly_ptr2, *ntt_tables);
   }
+
   for (auto &poly : decomposed_bfv) {
     seal::util::CoeffIter bfv_poly_ptr(poly);
     seal::util::ntt_negacyclic_harvey(bfv_poly_ptr, *ntt_tables);
@@ -68,6 +72,9 @@ void gsw::external_product(GSWCiphertext gsw_enc, seal::Ciphertext bfv,
       }
     }
   }
+
+  seal::util::inverse_ntt_negacyclic_harvey(res_ct.data(0), *ntt_tables);
+  seal::util::inverse_ntt_negacyclic_harvey(res_ct.data(1), *ntt_tables);
 }
 
 void gsw::decomp_rlwe(seal::Ciphertext ct,
@@ -157,6 +164,7 @@ void gsw::query_to_gsw(std::vector<seal::Ciphertext> query,
 
 void gsw::encrypt_lwe_to_gsw(seal::Ciphertext ct,
                              seal::Encryptor const &encryptor,
+                             seal::Decryptor &decryptor,
                              GSWCiphertext &output) {
   const auto &context_data = context->get_context_data(ct.parms_id());
   auto &parms = context_data->parms();
@@ -174,16 +182,24 @@ void gsw::encrypt_lwe_to_gsw(seal::Ciphertext ct,
       auto ct_ptr = cipher.data(poly_id);
       for (int mod_id = 0; mod_id < coeff_mod_count; mod_id++) {
         auto mod_idx = (mod_id * coeff_count);
+        auto pt = ct.data(0) + mod_idx;
         __uint128_t mod = coeff_modulus[mod_id].value();
-        auto coef = (mod - (1ll << bits % mod)) % mod;
+        auto coef = (__uint128_t(1) << bits % mod) % mod;
         for (int coeff_id = 0; coeff_id < coeff_count; coeff_id++) {
-          ct_ptr[coeff_id + mod_idx] = static_cast<uint64_t>(
-              (ct_ptr[coeff_id + mod_idx] + mod -
-               ((__uint128_t)ct.data(poly_id)[coeff_id + mod_idx] * coef %
-                mod)) %
-              mod);
+          ct_ptr[coeff_id + mod_idx] =
+              static_cast<uint64_t>((ct_ptr[coeff_id + mod_idx] +
+                                     ((__uint128_t)pt[coeff_id] * coef % mod)) %
+                                    mod);
         }
       }
+
+      seal::Plaintext pt(coeff_count);
+      decryptor.decrypt(cipher, pt);
+      // if (pt.nonzero_coeff_count() < 100) {
+      //   std::cout << "PT " << poly_id << ' ' << bits << ' ' << pt.to_string()
+      //             << std::endl;
+      // }
+
       std::vector<uint64_t> row;
       for (int i = 0; i < coeff_count * coeff_mod_count; i++) {
         row.push_back(cipher.data(0)[i]);

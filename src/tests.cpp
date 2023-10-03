@@ -1,4 +1,5 @@
 #include "tests.h"
+#include "external_prod.h"
 #include "pir.h"
 #include "seal/util/scalingvariant.h"
 #include "server.h"
@@ -9,6 +10,8 @@ void run_tests() {
   pir_params.print_values();
 
   std::cout << "Running tests..." << std::endl;
+
+  //bfv_example();
 
   test_external_product();
 }
@@ -43,24 +46,33 @@ void test_external_product() {
   auto evaluator_ = seal::Evaluator(context_);
   auto keygen_ = seal::KeyGenerator(context_);
   auto secret_key_ = keygen_.secret_key();
-  auto encryptor_ = new seal::Encryptor(context_, secret_key_);
-  auto decryptor_ = new seal::Decryptor(context_, secret_key_);
+  auto encryptor_ = seal::Encryptor(context_, secret_key_);
+  auto decryptor_ = seal::Decryptor(context_, secret_key_);
   size_t coeff_count = parms.poly_modulus_degree();
   uint64_t poly_degree = pir_params.get_seal_params().poly_modulus_degree();
   seal::Plaintext a(poly_degree), b(poly_degree), result;
   size_t plain_coeff_count = a.coeff_count();
   a[0] = 1;
-  a[1] = 9;
-  b[0] = 3;
-  b[1] = 6;
+  b[0] = 1;
   seal::Ciphertext a_encrypted, b_encrypted(context_), cipher_result;
   auto &context_data = *context_.first_context_data();
   b_encrypted.resize(2);
-  seal::util::multiply_add_plain_with_scaling_variant(b, context_data, *iter(b_encrypted));
-  encryptor_->encrypt_symmetric(a, a_encrypted);
+  seal::util::multiply_add_plain_with_scaling_variant(b, context_data,
+                                                      *iter(b_encrypted));
+  encryptor_.encrypt_symmetric(a, a_encrypted);
   evaluator_.multiply(a_encrypted, b_encrypted, cipher_result);
-  decryptor_->decrypt(cipher_result, result);
-  std::cout << result.to_string() << std::endl;
+  decryptor_.decrypt(cipher_result, result);
+  // std::cout << result.to_string() << std::endl;
+
+  // for (int i = 0; i < 10; i++) {
+  //   std::cout << b_encrypted.data(0)[i] << ' '
+  //             << b_encrypted.data(0)[i + coeff_count] << std::endl;
+  // }
+  GSWCiphertext b_gsw;
+  gsw::encrypt_lwe_to_gsw(b_encrypted, encryptor_, decryptor_, b_gsw);
+  gsw::external_product(b_gsw, a_encrypted, coeff_count, cipher_result);
+  decryptor_.decrypt(cipher_result, result);
+  std::cout << result.nonzero_coeff_count() << std::endl;
 }
 
 void test_pir() {

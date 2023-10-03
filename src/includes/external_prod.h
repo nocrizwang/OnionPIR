@@ -49,5 +49,5 @@ void query_to_gsw(std::vector<seal::Ciphertext> query, GSWCiphertext gsw_key,
                   GSWCiphertext &output);
 
 void encrypt_lwe_to_gsw(seal::Ciphertext ct, seal::Encryptor const &encryptor,
-                        GSWCiphertext &output);
+                        seal::Decryptor &decryptor, GSWCiphertext &output);
 } // namespace gsw
