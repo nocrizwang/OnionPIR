@@ -19,29 +19,44 @@ seal::SEALContext const *context;
 void gsw::external_product(GSWCiphertext gsw_enc, seal::Ciphertext bfv,
                            size_t ct_poly_size, seal::Ciphertext &res_ct) {
 
-  const auto &context_data = context->get_context_data(bfv.parms_id());
+  const auto &context_data = context->first_context_data();
   auto &parms2 = context_data->parms();
   auto &coeff_modulus = parms2.coeff_modulus();
   size_t coeff_count = parms2.poly_modulus_degree();
   size_t coeff_mod_count = coeff_modulus.size();
   auto ntt_tables = context_data->small_ntt_tables();
 
+  debug(bfv.data(0), "BFV[0]", coeff_count);
+  debug(bfv.data(1), "BFV[1]", coeff_count);
+
   std::vector<std::vector<uint64_t>> decomposed_bfv;
   decomp_rlwe(bfv, decomposed_bfv);
 
   for (auto &poly : gsw_enc) {
     seal::util::CoeffIter gsw_poly_ptr(poly.data());
-    seal::util::ntt_negacyclic_harvey(gsw_poly_ptr, *ntt_tables);
-
+    for (int i = 0; i < coeff_mod_count; i++) {
+      seal::util::ntt_negacyclic_harvey(gsw_poly_ptr + coeff_count * i,
+                                        *(ntt_tables + i));
+    }
     seal::util::CoeffIter gsw_poly_ptr2(poly.data() +
                                         coeff_count * coeff_mod_count);
-    seal::util::ntt_negacyclic_harvey(gsw_poly_ptr2, *ntt_tables);
+    for (int i = 0; i < coeff_mod_count; i++) {
+      seal::util::ntt_negacyclic_harvey(gsw_poly_ptr2 + coeff_count * i,
+                                        *(ntt_tables + i));
+    }
   }
+
+  debug(gsw_enc[0].data() + coeff_count * coeff_mod_count, "gswenc[0][1]", coeff_count);
 
   for (auto &poly : decomposed_bfv) {
     seal::util::CoeffIter bfv_poly_ptr(poly);
-    seal::util::ntt_negacyclic_harvey(bfv_poly_ptr, *ntt_tables);
+    for (int i = 0; i < coeff_mod_count; i++) {
+      seal::util::ntt_negacyclic_harvey(bfv_poly_ptr + coeff_count * i,
+                                        *(ntt_tables + i));
+    }
   }
+
+  debug(decomposed_bfv[3].data(), "bfvdec[0]", coeff_count);
 
   // Use the delayed mod speedup
   std::vector<std::vector<uint128_t>> result(
@@ -59,6 +74,10 @@ void gsw::external_product(GSWCiphertext gsw_enc, seal::Ciphertext bfv,
     }
   }
 
+
+  debug(result[0].data(), "result[0]", coeff_count);
+  debug(result[1].data(), "result[1]", coeff_count);
+
   for (size_t poly_id = 0; poly_id < 2; poly_id++) {
     auto ct_ptr = res_ct.data(poly_id);
     auto pt_ptr = result[poly_id];
@@ -73,8 +92,21 @@ void gsw::external_product(GSWCiphertext gsw_enc, seal::Ciphertext bfv,
     }
   }
 
-  seal::util::inverse_ntt_negacyclic_harvey(res_ct.data(0), *ntt_tables);
-  seal::util::inverse_ntt_negacyclic_harvey(res_ct.data(1), *ntt_tables);
+  // debug(res_ct.data(0), "result[0]", coeff_count);
+  // debug(res_ct.data(1), "result[1]", coeff_count);
+
+  for (int i = 0; i < coeff_mod_count; i++) {
+    seal::util::inverse_ntt_negacyclic_harvey(res_ct.data(0) + coeff_count * i,
+                                      *(ntt_tables + i));
+  }
+  for (int i = 0; i < coeff_mod_count; i++) {
+    seal::util::inverse_ntt_negacyclic_harvey(res_ct.data(1) + coeff_count * i,
+                                      *(ntt_tables + i));
+  }
+
+  // debug(res_ct.data(0), "result[0]", coeff_count);
+  // debug(res_ct.data(1), "result[1]", coeff_count);
+
 }
 
 void gsw::decomp_rlwe(seal::Ciphertext ct,
@@ -87,7 +119,7 @@ void gsw::decomp_rlwe(seal::Ciphertext ct,
   const uint64_t base = UINT64_C(1) << base_log2;
   const uint64_t mask = base - 1;
 
-  const auto &context_data = context->get_context_data(ct.parms_id());
+  const auto &context_data = context->first_context_data();
   auto &parms = context_data->parms();
   auto &coeff_modulus = parms.coeff_modulus();
   size_t coeff_count = parms.poly_modulus_degree();
@@ -174,10 +206,16 @@ void gsw::encrypt_lwe_to_gsw(seal::Ciphertext ct,
 
   output.clear();
 
-  for (int poly_id = 1; poly_id >= 0; poly_id--) {
+  for (int poly_id = 0; poly_id <= 1; poly_id++) {
     for (int i = l - 1; i >= 0; i--) {
       seal::Ciphertext cipher;
       encryptor.encrypt_zero_symmetric(cipher);
+      // for (int j = 0; j < coeff_count * coeff_mod_count; j++) {
+      //   cipher.data(0)[j] = 0;
+      // }
+      // for (int j = 0; j < coeff_count * coeff_mod_count; j++) {
+      //   cipher.data(1)[j] = 0;
+      // }
       auto bits = (i * base_log2);
       auto ct_ptr = cipher.data(poly_id);
       for (int mod_id = 0; mod_id < coeff_mod_count; mod_id++) {

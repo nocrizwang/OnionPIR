@@ -1,6 +1,30 @@
 #pragma once
-
 #include "seal/seal.h"
+#include <iostream>
+
+template <typename T> 
+std::string to_string(T x) {
+  std::string ret;
+  if (x == 0) {
+    return "0";
+  }
+  while (x) {
+    ret += (x % 10) + '0';
+    x /= 10;
+  }
+  reverse(ret.begin(), ret.end());
+  return ret;
+}
+
+template <typename T> inline void debug(T *ptr, std::string name, int cnt) {
+  std::cout << name << ": ";
+  for (int i = 0; i < 10; i++) {
+    if (ptr[i] != 0 || ptr[i + cnt] != 0) {
+      std::cout << "(" << to_string(ptr[i]) << ", " << to_string(ptr[i + cnt]) << ") *X^" << i << ' ';
+    }
+  }
+  std::cout << std::endl;
+}
 
 namespace utils {
 /*!

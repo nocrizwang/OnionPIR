@@ -3,6 +3,7 @@
 #include "pir.h"
 #include "seal/util/scalingvariant.h"
 #include "server.h"
+#include "utils.h"
 #include <iostream>
 
 void run_tests() {
@@ -11,7 +12,7 @@ void run_tests() {
 
   std::cout << "Running tests..." << std::endl;
 
-  //bfv_example();
+  // bfv_example();
 
   test_external_product();
 }
@@ -52,17 +53,23 @@ void test_external_product() {
   uint64_t poly_degree = pir_params.get_seal_params().poly_modulus_degree();
   seal::Plaintext a(poly_degree), b(poly_degree), result;
   size_t plain_coeff_count = a.coeff_count();
-  a[0] = 1;
-  b[0] = 1;
-  seal::Ciphertext a_encrypted, b_encrypted(context_), cipher_result;
+  a[0] = 1; a[1] = 2; a[3] = 6;
+  b[0] = 1; b[1] = 2; b[3] = 6;
+  seal::Ciphertext a_encrypted(context_), b_encrypted(context_),
+      cipher_result(context_);
   auto &context_data = *context_.first_context_data();
   b_encrypted.resize(2);
-  seal::util::multiply_add_plain_with_scaling_variant(b, context_data,
-                                                      *iter(b_encrypted));
+  seal::util::add_plain_without_scaling_variant(b, context_data,
+                                                *iter(b_encrypted));
+
+  a_encrypted.resize(2);
+  seal::util::multiply_add_plain_with_scaling_variant(a, context_data,
+                                                      *iter(a_encrypted));
+  cipher_result.resize(2);
   encryptor_.encrypt_symmetric(a, a_encrypted);
-  evaluator_.multiply(a_encrypted, b_encrypted, cipher_result);
-  decryptor_.decrypt(cipher_result, result);
-  // std::cout << result.to_string() << std::endl;
+  //  evaluator_.multiply(a_encrypted, b_encrypted, cipher_result);
+  //  decryptor_.decrypt(cipher_result, result);
+  //  std::cout << result.to_string() << std::endl;
 
   // for (int i = 0; i < 10; i++) {
   //   std::cout << b_encrypted.data(0)[i] << ' '
@@ -70,8 +77,26 @@ void test_external_product() {
   // }
   GSWCiphertext b_gsw;
   gsw::encrypt_lwe_to_gsw(b_encrypted, encryptor_, decryptor_, b_gsw);
+
+
+
+  debug(a_encrypted.data(0), "AENC[0]", coeff_count);
+  debug(a_encrypted.data(1), "AENC[1]", coeff_count);
+
+
+  // debug(b_encrypted.data(0), "BENC[0]", coeff_count);
+  // debug(b_encrypted.data(1), "BENC[1]", coeff_count);
+  // evaluator_.transform_to_ntt_inplace(b_encrypted);
+  // debug(b_encrypted.data(0), "BENC[0]", coeff_count);
+  // debug(b_encrypted.data(1), "BENC[1]", coeff_count);
+
   gsw::external_product(b_gsw, a_encrypted, coeff_count, cipher_result);
+
+  debug(cipher_result.data(0), "RESULT[0]", coeff_count);
+  debug(cipher_result.data(1), "RESULT[1]", coeff_count);
+
   decryptor_.decrypt(cipher_result, result);
+  std::cout << result.to_string() << std::endl;
   std::cout << result.nonzero_coeff_count() << std::endl;
 }
 
