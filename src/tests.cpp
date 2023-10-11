@@ -13,8 +13,8 @@ void run_tests() {
   std::cout << "Running tests..." << std::endl;
 
   // bfv_example();
-  test_external_product();
-  // test_pir();
+  // test_external_product();
+  test_pir();
 }
 
 void bfv_example() {
@@ -76,8 +76,7 @@ void test_external_product() {
   debug(a_encrypted.data(0), "RESULT[0]", coeff_count);
   debug(a_encrypted.data(1), "RESULT[1]", coeff_count);
   decryptor_.decrypt(a_encrypted, result);
-  std::cout << "Noise budget: "
-            << decryptor_.invariant_noise_budget(a_encrypted) << std::endl;
+  std::cout << "Noise budget: " << decryptor_.invariant_noise_budget(a_encrypted) << std::endl;
   std::cout << result.to_string() << std::endl;
   std::cout << result.nonzero_coeff_count() << std::endl;
 }
@@ -121,8 +120,7 @@ void test_pir() {
   auto result = server.make_query(client_id, client.generate_query(id));
 
   std::cout << "Result: " << std::endl;
-  std::cout << client.get_decryptor()->invariant_noise_budget(result[0])
-            << std::endl;
+  std::cout << client.get_decryptor()->invariant_noise_budget(result[0]) << std::endl;
   auto decrypted_result = client.decrypt_result(result);
 #ifdef _DEBUG
   for (auto &res : decrypted_result) {
@@ -133,22 +131,19 @@ void test_pir() {
 
 #ifdef _BENCHMARK
   std::cout << "Noise budget remaining: "
-            << client.get_decryptor()->invariant_noise_budget(result[0])
-            << " bits" << std::endl;
+            << client.get_decryptor()->invariant_noise_budget(result[0]) << " bits" << std::endl;
 
   auto query = client.generate_query(5);
   auto start_time = std::chrono::high_resolution_clock::now();
   server.make_query_regular_mod(client_id, query);
   auto end_time = std::chrono::high_resolution_clock::now();
-  auto elapsed_time = std::chrono::duration_cast<std::chrono::milliseconds>(
-      end_time - start_time);
+  auto elapsed_time = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time);
   std::cout << "No delayed mod: " << elapsed_time.count() << " ms" << std::endl;
 
   start_time = std::chrono::high_resolution_clock::now();
   server.make_query_delayed_mod(client_id, query);
   end_time = std::chrono::high_resolution_clock::now();
-  elapsed_time = std::chrono::duration_cast<std::chrono::milliseconds>(
-      end_time - start_time);
+  elapsed_time = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time);
   std::cout << "Delayed mod: " << elapsed_time.count() << " ms" << std::endl;
 
   std::cout << std::endl;

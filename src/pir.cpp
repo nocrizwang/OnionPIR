@@ -2,9 +2,7 @@
 
 #include <cassert>
 
-seal::EncryptionParameters PirParams::get_seal_params() const {
-  return seal_params_;
-}
+seal::EncryptionParameters PirParams::get_seal_params() const { return seal_params_; }
 
 uint64_t PirParams::get_DBSize() const { return DBSize_; }
 
@@ -15,21 +13,14 @@ uint64_t PirParams::get_l() const { return l_; }
 uint64_t PirParams::get_base_log2() const { return base_log2_; }
 
 void PirParams::print_values() {
-  std::cout << "=============================================================="
-            << std::endl;
-  std::cout << "                       PIR PARAMETERS                         "
-            << std::endl;
-  std::cout << "=============================================================="
-            << std::endl;
-  std::cout << "  num_entries_                         = " << num_entries_
-            << std::endl;
+  std::cout << "==============================================================" << std::endl;
+  std::cout << "                       PIR PARAMETERS                         " << std::endl;
+  std::cout << "==============================================================" << std::endl;
+  std::cout << "  num_entries_                         = " << num_entries_ << std::endl;
   std::cout << "  l_                                   = " << l_ << std::endl;
-  std::cout << "  base_log2_                           = " << base_log2_
-            << std::endl;
-  std::cout << "  entry_size_                          = " << entry_size_
-            << std::endl;
-  std::cout << "  DBSize_ (num plaintexts in database) = " << DBSize_
-            << std::endl;
+  std::cout << "  base_log2_                           = " << base_log2_ << std::endl;
+  std::cout << "  entry_size_                          = " << entry_size_ << std::endl;
+  std::cout << "  DBSize_ (num plaintexts in database) = " << DBSize_ << std::endl;
   std::cout << "  DBCapacity (max num of entries)      = "
             << DBSize_ * get_num_entries_per_plaintext() << std::endl;
   std::cout << "  dimensions_                          = [ ";
@@ -39,8 +30,8 @@ void PirParams::print_values() {
   }
 
   std::cout << "]" << std::endl;
-  std::cout << "  seal_params_.poly_modulus_degree()       = "
-            << seal_params_.poly_modulus_degree() << std::endl;
+  std::cout << "  seal_params_.poly_modulus_degree()       = " << seal_params_.poly_modulus_degree()
+            << std::endl;
 
   auto coeff_modulus_size = seal_params_.coeff_modulus().size();
   std::cout << "  seal_params_.coeff_modulus().bit_count   = [";
@@ -55,8 +46,7 @@ void PirParams::print_values() {
             << seal_params_.coeff_modulus().size() << std::endl;
   std::cout << "  seal_params_.plain_modulus().bitcount()  = "
             << seal_params_.plain_modulus().bit_count() << std::endl;
-  std::cout << "=============================================================="
-            << std::endl;
+  std::cout << "==============================================================" << std::endl;
 }
 
 size_t PirParams::get_num_entries_per_plaintext() const {

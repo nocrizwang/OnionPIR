@@ -34,8 +34,7 @@ GSWCiphertext PirClient::generate_gsw_from_key() {
   auto coeff_count = params_.poly_modulus_degree();
   std::vector<uint64_t> sk_ntt(params_.poly_modulus_degree() * coeff_mod_count);
 
-  memcpy(sk_ntt.data(), sk_.data(),
-         coeff_count * coeff_mod_count * sizeof(uint64_t));
+  memcpy(sk_ntt.data(), sk_.data(), coeff_count * coeff_mod_count * sizeof(uint64_t));
 
   RNSIter secret_key_iter(sk_ntt.data(), coeff_count);
   inverse_ntt_negacyclic_harvey(secret_key_iter, coeff_mod_count, ntt_tables);
@@ -83,8 +82,7 @@ PirQuery PirClient::generate_query(std::uint64_t entry_index) {
   auto coeff_mod_count = coeff_modulus.size();
 
   for (int i = 1; i < query_indexes.size(); i++) {
-    std::cout << "query_indexes[i]: " << ptr << ' ' << l << ' '
-              << query_indexes[i] << std::endl;
+    std::cout << "query_indexes[i]: " << ptr << ' ' << l << ' ' << query_indexes[i] << std::endl;
     auto pt = query.data(0) + ptr + query_indexes[i] * l;
     for (int j = 0; j < l; j++) {
       for (int k = 0; k < coeff_mod_count; k++) {
@@ -111,10 +109,8 @@ seal::GaloisKeys PirClient::create_galois_keys() {
   // must be less than or equal to polynomial modulus degree and bit_length.
   int compression_factor = std::log2(dims_[0]);
 
-  size_t min_ele =
-      params_.poly_modulus_degree() / pow(2, compression_factor) + 1;
-  for (size_t i = min_ele; i <= params_.poly_modulus_degree() + 1;
-       i = (i - 1) * 2 + 1) {
+  size_t min_ele = params_.poly_modulus_degree() / pow(2, compression_factor) + 1;
+  for (size_t i = min_ele; i <= params_.poly_modulus_degree() + 1; i = (i - 1) * 2 + 1) {
     galois_elts.push_back(i);
   }
   seal::GaloisKeys galois_keys;
@@ -122,10 +118,8 @@ seal::GaloisKeys PirClient::create_galois_keys() {
   return galois_keys;
 }
 
-std::vector<seal::Plaintext>
-PirClient::decrypt_result(std::vector<seal::Ciphertext> reply) {
-  std::vector<seal::Plaintext> result(
-      reply.size(), seal::Plaintext(params_.poly_modulus_degree()));
+std::vector<seal::Plaintext> PirClient::decrypt_result(std::vector<seal::Ciphertext> reply) {
+  std::vector<seal::Plaintext> result(reply.size(), seal::Plaintext(params_.poly_modulus_degree()));
   for (size_t i = 0; i < reply.size(); i++) {
     decryptor_->decrypt(reply[i], result[i]);
   }
@@ -151,12 +145,10 @@ std::vector<size_t> PirClient::get_query_indexes(size_t plaintext_index) {
   return query_indexes;
 }
 
-Entry PirClient::get_entry_from_plaintext(size_t entry_index,
-                                          seal::Plaintext plaintext) {
+Entry PirClient::get_entry_from_plaintext(size_t entry_index, seal::Plaintext plaintext) {
   // Offset in the plaintext in bits
-  size_t start_position_in_plaintext =
-      (entry_index % pir_params_.get_num_entries_per_plaintext()) *
-      pir_params_.get_entry_size() * 8;
+  size_t start_position_in_plaintext = (entry_index % pir_params_.get_num_entries_per_plaintext()) *
+                                       pir_params_.get_entry_size() * 8;
 
   // Offset in the plaintext by coefficient
   size_t num_bits_per_coeff = pir_params_.get_num_bits_per_coeff();

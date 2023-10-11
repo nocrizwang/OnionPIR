@@ -16,8 +16,7 @@ public:
 
   seal::GaloisKeys create_galois_keys();
 
-  std::vector<seal::Plaintext>
-  decrypt_result(std::vector<seal::Ciphertext> reply);
+  std::vector<seal::Plaintext> decrypt_result(std::vector<seal::Ciphertext> reply);
   uint32_t client_id;
   seal::Decryptor *get_decryptor();
   /*!
