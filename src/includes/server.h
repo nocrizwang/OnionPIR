@@ -50,14 +50,6 @@ private:
   evaluate_first_dim_delayed_mod(std::vector<seal::Ciphertext> &selection_vector);
 
   /*!
-    Encodes data into plaintexts by encoding the stream of bits into plaintext
-    coefficients. However each plaintext always ends aligned to the end of an
-    entry (no entries are split across multiple plaintexts).
-    @param data - Flattened vector of entry data
-  */
-  void set_database_from_bytes(const std::vector<uint8_t> &data);
-
-  /*!
     Transforms the plaintexts in the database into their NTT representation.
     This speeds up computation but takes up more memory.
   */

@@ -227,37 +227,35 @@ void PirServer::set_database(std::vector<Entry> new_db) {
     }
   }
 
-  std::vector<uint8_t> data;
-  for (const Entry &entry : new_db) {
-    data.insert(data.end(), entry.begin(), entry.end());
-  }
-
-  set_database_from_bytes(data);
-}
-
-void PirServer::set_database_from_bytes(const std::vector<uint8_t> &data) {
-  // Get necessary parameters
   size_t bits_per_coeff = pir_params_.get_num_bits_per_coeff();
   size_t num_coeffs = pir_params_.get_seal_params().poly_modulus_degree();
   size_t num_bits_per_plaintext = num_coeffs * bits_per_coeff;
+  size_t num_entries_per_plaintext = pir_params_.get_num_entries_per_plaintext();
+  size_t num_plaintexts = new_db.size() / num_entries_per_plaintext;
 
   db_ = Database();
 
-  auto data_iterator = data.begin();
+  const uint128_t coeff_mask = (1 << (bits_per_coeff + 1)) - 1;
   uint128_t data_buffer = 0;
   uint8_t data_offset = 0;
-  const uint128_t coeff_mask = (1 << (bits_per_coeff + 1)) - 1;
-
-  while (data_iterator != data.end()) {
+  for (int i = 0; i < num_plaintexts; i++) {
+    uint128_t data_buffer = 0;
+    uint8_t data_offset = 0;
     seal::Plaintext plaintext(num_coeffs);
-    for (int i = 0; i < num_coeffs && data_iterator != data.end(); ++i) {
-      while (data_offset < bits_per_coeff && data_iterator != data.end()) {
-        data_buffer += *(data_iterator++) << data_offset;
+
+    int index = 0;
+    for (int j = num_entries_per_plaintext * i;
+         j < std::min(num_entries_per_plaintext * (i + 1), new_db.size()); j++) {
+      for (int k = 0; k < pir_params_.get_entry_size(); k++) {
+        data_buffer += new_db[j][k] << data_offset;
         data_offset += 8;
+        while (data_offset >= bits_per_coeff) {
+          plaintext[index] = data_buffer & coeff_mask;
+          index++;
+          data_buffer >>= bits_per_coeff;
+          data_offset -= bits_per_coeff;
+        }
       }
-      plaintext[i] = data_buffer & coeff_mask;
-      data_buffer >>= bits_per_coeff;
-      data_offset -= bits_per_coeff;
     }
     db_.push_back(plaintext);
   }

@@ -51,7 +51,7 @@ void PirParams::print_values() {
 
 size_t PirParams::get_num_entries_per_plaintext() const {
   size_t total_bits = get_num_bits_per_plaintext();
-  return total_bits / entry_size_;
+  return total_bits / (entry_size_ * 8);
 }
 
 size_t PirParams::get_entry_size() const { return entry_size_; }

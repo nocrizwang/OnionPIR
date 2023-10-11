@@ -7,7 +7,7 @@
 #include <iostream>
 
 void run_tests() {
-  PirParams pir_params(256, 2, 1500000, 5, 15);
+  PirParams pir_params(256, 2, 200000, 5, 15);
   // pir_params.print_values();
 
   std::cout << "Running tests..." << std::endl;
@@ -18,7 +18,7 @@ void run_tests() {
 }
 
 void bfv_example() {
-  PirParams pir_params(256, 2, 1500000, 5, 5);
+  PirParams pir_params(256, 2, 200000, 5, 5);
   auto context_ = seal::SEALContext(pir_params.get_seal_params());
   auto evaluator_ = seal::Evaluator(context_);
   auto keygen_ = seal::KeyGenerator(context_);
@@ -41,7 +41,7 @@ void bfv_example() {
 }
 
 void test_external_product() {
-  PirParams pir_params(256, 2, 1500000, 5, 15);
+  PirParams pir_params(256, 2, 200000, 5, 15);
   auto parms = pir_params.get_seal_params();
   auto context_ = seal::SEALContext(parms);
   auto evaluator_ = seal::Evaluator(context_);
@@ -82,7 +82,7 @@ void test_external_product() {
 }
 
 void test_pir() {
-  PirParams pir_params(256, 2, 1500000, 5, 15);
+  PirParams pir_params(256, 2, 200000, 5, 15);
   pir_params.print_values();
   const int client_id = 0;
   PirServer server(pir_params);
@@ -102,7 +102,6 @@ void test_pir() {
     entry.push_back(12);
     entry.push_back(16);
     entry.push_back(20);
-    // entry.push_back(183);
   }
   server.set_database(data);
   std::cout << "DB set" << std::endl;
@@ -115,8 +114,7 @@ void test_pir() {
 
   std::cout << "Client registered" << std::endl;
 
-  // client.test_external_product();
-  int id = 1350000;
+  int id = 135005;
   auto result = server.make_query(client_id, client.generate_query(id));
 
   std::cout << "Result: " << std::endl;
