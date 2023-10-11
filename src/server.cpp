@@ -57,21 +57,21 @@ PirServer::evaluate_first_dim(std::vector<seal::Ciphertext> &selection_vector) {
 // be transformed to ntt.
 std::vector<seal::Ciphertext> PirServer::evaluate_first_dim_delayed_mod(
     std::vector<seal::Ciphertext> &selection_vector) {
-
   int size_of_other_dims = DBSize_ / dims_[0];
   std::vector<seal::Ciphertext> result;
   auto seal_params =
       context_.get_context_data(selection_vector[0].parms_id())->parms();
   // auto seal_params =  context_.key_context_data()->parms();
   auto coeff_modulus = seal_params.coeff_modulus();
-  std::cout << "size:" << coeff_modulus.size() << std::endl;
-  std::cout << selection_vector[0].coeff_modulus_size() << std::endl;
-  std::cout << coeff_modulus[0].value() << std::endl;
   size_t coeff_count = seal_params.poly_modulus_degree();
   size_t coeff_mod_count = coeff_modulus.size();
   size_t encrypted_ntt_size = selection_vector[0].size();
-  std::cout << "encrypted_ntt_size: " << encrypted_ntt_size << std::endl;
   seal::Ciphertext ct_acc;
+
+  for (int i = 0; i < dims_[0]; i++) {
+    evaluator_.transform_to_ntt_inplace(selection_vector[i]);
+  }
+
   for (int col_id = 0; col_id < size_of_other_dims; ++col_id) {
     std::vector<std::vector<uint128_t>> buffer(
         encrypted_ntt_size,
@@ -169,14 +169,6 @@ PirServer::expand_query(uint32_t client_id, seal::Ciphertext ciphertext) {
     }
   }
 
-  for (auto &ciphertext : cipher_vec) {
-    // std::cout << "degree: " << ciphertext.poly_modulus_degree() <<std::endl;
-    // seal::Plaintext c(ciphertext.poly_modulus_degree());
-    // client_decryptors_[client_id]->decrypt(ciphertext, c);
-    // std::cout << c.to_string() << std::endl;
-    evaluator_.transform_to_ntt_inplace(ciphertext);
-  }
-
   return cipher_vec;
 }
 
@@ -192,8 +184,7 @@ void PirServer::set_client_gsw_key(uint32_t client_id,
 
 std::vector<seal::Ciphertext> PirServer::make_query(uint32_t client_id,
                                                     PirQuery query) {
-  std::vector<seal::Ciphertext> query_vector =
-      expand_query(client_id, query[0]);
+  std::vector<seal::Ciphertext> query_vector = expand_query(client_id, query);
 
   std::vector<seal::Ciphertext> result =
       evaluate_first_dim_delayed_mod(query_vector);
@@ -206,7 +197,8 @@ std::vector<seal::Ciphertext> PirServer::make_query(uint32_t client_id,
     for (int j = 0; j < dims_[i]; j++) {
       std::vector<seal::Ciphertext> lwe_vector;
       for (int k = 0; k < l; k++) {
-        lwe_vector.push_back(query_vector[ptr++]);
+        lwe_vector.push_back(query_vector[ptr]);
+        ptr += 1;
       }
       gsw::query_to_gsw(lwe_vector, client_gsw_keys_[client_id], gsw_vector[j]);
     }
@@ -220,7 +212,7 @@ std::vector<seal::Ciphertext> PirServer::make_query(uint32_t client_id,
 std::vector<seal::Ciphertext>
 PirServer::make_query_delayed_mod(uint32_t client_id, PirQuery query) {
   std::vector<seal::Ciphertext> first_dim_selection_vector =
-      expand_query(client_id, query[0]);
+      expand_query(client_id, query);
 
   std::vector<seal::Ciphertext> result =
       evaluate_first_dim_delayed_mod(first_dim_selection_vector);
@@ -231,7 +223,7 @@ PirServer::make_query_delayed_mod(uint32_t client_id, PirQuery query) {
 std::vector<seal::Ciphertext>
 PirServer::make_query_regular_mod(uint32_t client_id, PirQuery query) {
   std::vector<seal::Ciphertext> first_dim_selection_vector =
-      expand_query(client_id, query[0]);
+      expand_query(client_id, query);
 
   std::vector<seal::Ciphertext> result =
       evaluate_first_dim(first_dim_selection_vector);

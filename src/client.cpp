@@ -1,5 +1,7 @@
 #include "client.h"
+#include "external_prod.h"
 #include "seal/util/defines.h"
+#include "seal/util/scalingvariant.h"
 #include <bitset>
 
 PirClient::PirClient(const PirParams &pir_params)
@@ -29,47 +31,16 @@ GSWCiphertext PirClient::generate_gsw_from_key() {
   auto ntt_tables = context_->first_context_data()->small_ntt_tables();
   auto coeff_modulus = context_->first_context_data()->parms().coeff_modulus();
   auto coeff_mod_count = coeff_modulus.size();
-
+  auto coeff_count = params_.poly_modulus_degree();
   std::vector<uint64_t> sk_ntt(params_.poly_modulus_degree() * coeff_mod_count);
 
   memcpy(sk_ntt.data(), sk_.data(),
-         params_.poly_modulus_degree() * coeff_mod_count * sizeof(uint64_t));
+         coeff_count * coeff_mod_count * sizeof(uint64_t));
 
-  RNSIter secret_key_iter(sk_ntt.data(), params_.poly_modulus_degree());
+  RNSIter secret_key_iter(sk_ntt.data(), coeff_count);
   inverse_ntt_negacyclic_harvey(secret_key_iter, coeff_mod_count, ntt_tables);
 
-  auto l = pir_params_.get_l();
-  auto base_log2 = pir_params_.get_base_log2();
-  auto coeff_count = params_.poly_modulus_degree();
-
-  for (int poly_id = 1; poly_id >= 0; poly_id--) {
-    for (int i = l - 1; i >= 0; i--) {
-      seal::Ciphertext cipher;
-      encryptor_->encrypt_zero_symmetric(cipher);
-      auto bits = (i * base_log2);
-      auto ct_ptr = cipher.data(poly_id);
-      for (int mod_id = 0; mod_id < coeff_mod_count; mod_id++) {
-        auto mod_idx = (mod_id * coeff_count);
-        __uint128_t mod = coeff_modulus[mod_id].value();
-        auto coef = (mod - (1ll << bits % mod)) % mod;
-        for (int coeff_id = 0; coeff_id < coeff_count; coeff_id++) {
-          ct_ptr[coeff_id + mod_idx] = static_cast<uint64_t>(
-              (ct_ptr[coeff_id + mod_idx] + mod -
-               ((__uint128_t)sk_ntt[coeff_id + mod_idx] * coef % mod)) %
-              mod);
-        }
-      }
-      std::vector<uint64_t> row;
-      for (int i = 0; i < coeff_count * coeff_mod_count; i++) {
-        row.push_back(cipher.data(0)[i]);
-      }
-      for (int i = 0; i < coeff_count * coeff_mod_count; i++) {
-        row.push_back(cipher.data(1)[i]);
-      }
-      gsw_enc.push_back(row);
-    }
-  }
-
+  gsw::encrypt_plain_to_gsw(sk_ntt, *encryptor_, *decryptor_, gsw_enc);
   return gsw_enc;
 }
 
@@ -78,7 +49,7 @@ PirQuery PirClient::generate_query(std::uint64_t entry_index) {
   // Get the corresponding index of the plaintext in the database
   size_t plaintext_index = get_database_plain_index(entry_index);
   std::vector<size_t> query_indexes = get_query_indexes(plaintext_index);
-  uint64_t poly_degree = params_.poly_modulus_degree();
+  uint64_t coeff_count = params_.poly_modulus_degree();
 
   // The number of bits is equal to the size of the first dimension
 
@@ -89,8 +60,7 @@ PirQuery PirClient::generate_query(std::uint64_t entry_index) {
     bits_per_ciphertext *= 2;
 
   uint64_t size_of_other_dims = DBSize_ / dims_[0];
-  std::vector<seal::Plaintext> plain_query;
-  plain_query.push_back(seal::Plaintext(poly_degree));
+  seal::Plaintext plain_query(coeff_count);
 
   // Algorithm 1 from the OnionPIR Paper
   // We set the corresponding coefficient to the inverse so the value of the
@@ -99,27 +69,32 @@ PirQuery PirClient::generate_query(std::uint64_t entry_index) {
   seal::util::try_invert_uint_mod(bits_per_ciphertext, plain_modulus, inverse);
 
   int ptr = 0;
-  plain_query[0][ptr + query_indexes[0]] = inverse;
+  plain_query[ptr + query_indexes[0]] = inverse;
   ptr += dims_[0];
+
+  PirQuery query;
+  encryptor_->encrypt_symmetric(plain_query, query);
 
   auto l = pir_params_.get_l();
   auto base_log2 = pir_params_.get_base_log2();
 
+  auto context_data = context_->first_context_data();
+  auto coeff_modulus = context_data->parms().coeff_modulus();
+  auto coeff_mod_count = coeff_modulus.size();
+
   for (int i = 1; i < query_indexes.size(); i++) {
+    std::cout << "query_indexes[i]: " << ptr << ' ' << l << ' '
+              << query_indexes[i] << std::endl;
+    auto pt = query.data(0) + ptr + query_indexes[i] * l;
     for (int j = 0; j < l; j++) {
-      plain_query[0][ptr + query_indexes[i] * l + j] =
-          inverse *
-          (((uint128_t)1) << ((l - 1 - j) * base_log2) % plain_modulus) %
-          plain_modulus;
+      for (int k = 0; k < coeff_mod_count; k++) {
+        auto pad = k * coeff_count;
+        __uint128_t mod = coeff_modulus[k].value();
+        auto coef = (__uint128_t(inverse) << ((l - 1 - j) * base_log2)) % mod;
+        pt[j + pad] = (pt[j + pad] + coef) % mod;
+      }
     }
     ptr += dims_[i] * l;
-  }
-
-  PirQuery query;
-  for (int i = 0; i < plain_query.size(); i++) {
-    seal::Ciphertext x_encrypted;
-    encryptor_->encrypt_symmetric(plain_query[i], x_encrypted);
-    query.push_back(x_encrypted);
   }
 
   return query;

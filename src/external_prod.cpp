@@ -46,7 +46,8 @@ void gsw::external_product(GSWCiphertext gsw_enc, seal::Ciphertext bfv,
     }
   }
 
-  debug(gsw_enc[0].data() + coeff_count * coeff_mod_count, "gswenc[0][1]", coeff_count);
+  debug(gsw_enc[0].data() + coeff_count * coeff_mod_count, "gswenc[0][1]",
+        coeff_count);
 
   for (auto &poly : decomposed_bfv) {
     seal::util::CoeffIter bfv_poly_ptr(poly);
@@ -62,7 +63,7 @@ void gsw::external_product(GSWCiphertext gsw_enc, seal::Ciphertext bfv,
   std::vector<std::vector<uint128_t>> result(
       2, std::vector<uint128_t>(coeff_count * coeff_mod_count, 0));
 
-  std::cout << "GSW size " << gsw_enc.size() << std::endl;
+  // std::cout << "GSW size " << gsw_enc.size() << std::endl;
   for (int k = 0; k < 2; ++k) {
     for (size_t j = 0; j < 2 * l; j++) {
       seal::util::ConstCoeffIter encrypted_gsw_ptr(
@@ -73,7 +74,6 @@ void gsw::external_product(GSWCiphertext gsw_enc, seal::Ciphertext bfv,
                                 result[k].data());
     }
   }
-
 
   debug(result[0].data(), "result[0]", coeff_count);
   debug(result[1].data(), "result[1]", coeff_count);
@@ -97,16 +97,15 @@ void gsw::external_product(GSWCiphertext gsw_enc, seal::Ciphertext bfv,
 
   for (int i = 0; i < coeff_mod_count; i++) {
     seal::util::inverse_ntt_negacyclic_harvey(res_ct.data(0) + coeff_count * i,
-                                      *(ntt_tables + i));
+                                              *(ntt_tables + i));
   }
   for (int i = 0; i < coeff_mod_count; i++) {
     seal::util::inverse_ntt_negacyclic_harvey(res_ct.data(1) + coeff_count * i,
-                                      *(ntt_tables + i));
+                                              *(ntt_tables + i));
   }
 
   // debug(res_ct.data(0), "result[0]", coeff_count);
   // debug(res_ct.data(1), "result[1]", coeff_count);
-
 }
 
 void gsw::decomp_rlwe(seal::Ciphertext ct,
@@ -157,7 +156,7 @@ void gsw::decomp_rlwe(seal::Ciphertext ct,
       output.push_back(std::move(row));
     }
   }
-  std::cout << "SIZE " << output.size() << std::endl;
+  // std::cout << "SIZE " << output.size() << std::endl;
 }
 
 void gsw::query_to_gsw(std::vector<seal::Ciphertext> query,
@@ -182,8 +181,6 @@ void gsw::query_to_gsw(std::vector<seal::Ciphertext> query,
   }
 
   for (int i = 0; i < l; i++) {
-    std::cout << "query " << i << ' ' << query[i].poly_modulus_degree()
-              << std::endl;
     external_product(gsw_key, query[i], coeff_count, query[i]);
     for (int j = 0; j < coeff_count * coeff_mod_count; j++) {
       output[i + l].push_back(query[i].data(0)[j]);
@@ -194,49 +191,42 @@ void gsw::query_to_gsw(std::vector<seal::Ciphertext> query,
   }
 }
 
-void gsw::encrypt_lwe_to_gsw(seal::Ciphertext ct,
-                             seal::Encryptor const &encryptor,
-                             seal::Decryptor &decryptor,
-                             GSWCiphertext &output) {
-  const auto &context_data = context->get_context_data(ct.parms_id());
+void gsw::encrypt_plain_to_gsw(std::vector<uint64_t> const &plaintext,
+                               seal::Encryptor const &encryptor,
+                               seal::Decryptor &decryptor,
+                               GSWCiphertext &output) {
+  const auto &context_data = context->first_context_data();
   auto &parms = context_data->parms();
   auto &coeff_modulus = parms.coeff_modulus();
   size_t coeff_count = parms.poly_modulus_degree();
   size_t coeff_mod_count = coeff_modulus.size();
 
   output.clear();
-
+  assert(plaintext.size() == coeff_count * coeff_mod_count ||
+         plaintext.size() == coeff_count);
   for (int poly_id = 0; poly_id <= 1; poly_id++) {
     for (int i = l - 1; i >= 0; i--) {
       seal::Ciphertext cipher;
       encryptor.encrypt_zero_symmetric(cipher);
-      // for (int j = 0; j < coeff_count * coeff_mod_count; j++) {
-      //   cipher.data(0)[j] = 0;
-      // }
-      // for (int j = 0; j < coeff_count * coeff_mod_count; j++) {
-      //   cipher.data(1)[j] = 0;
-      // }
+
       auto bits = (i * base_log2);
-      auto ct_ptr = cipher.data(poly_id);
+      auto ct = cipher.data(poly_id);
       for (int mod_id = 0; mod_id < coeff_mod_count; mod_id++) {
-        auto mod_idx = (mod_id * coeff_count);
-        auto pt = ct.data(0) + mod_idx;
+        auto pad = (mod_id * coeff_count);
         __uint128_t mod = coeff_modulus[mod_id].value();
-        auto coef = (__uint128_t(1) << bits % mod) % mod;
-        for (int coeff_id = 0; coeff_id < coeff_count; coeff_id++) {
-          ct_ptr[coeff_id + mod_idx] =
-              static_cast<uint64_t>((ct_ptr[coeff_id + mod_idx] +
-                                     ((__uint128_t)pt[coeff_id] * coef % mod)) %
-                                    mod);
+        uint64_t coef = (__uint128_t(1) << bits) % mod;
+        auto pt = plaintext.data();
+        if (plaintext.size() == coeff_count * coeff_mod_count) {
+          pt = plaintext.data() + pad;
+        }
+        for (int j = 0; j < coeff_count; j++) {
+          ct[j + pad] = static_cast<uint64_t>(
+              (ct[j + pad] + (__uint128_t(pt[j]) * coef % mod)) % mod);
         }
       }
 
       seal::Plaintext pt(coeff_count);
       decryptor.decrypt(cipher, pt);
-      // if (pt.nonzero_coeff_count() < 100) {
-      //   std::cout << "PT " << poly_id << ' ' << bits << ' ' << pt.to_string()
-      //             << std::endl;
-      // }
 
       std::vector<uint64_t> row;
       for (int i = 0; i < coeff_count * coeff_mod_count; i++) {

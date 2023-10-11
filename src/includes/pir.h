@@ -11,7 +11,7 @@ using namespace seal;
 
 // Each entry is a vector of bytes
 typedef std::vector<uint8_t> Entry;
-typedef std::vector<Ciphertext> PirQuery;
+typedef Ciphertext PirQuery;
 
 class PirParams {
 public:

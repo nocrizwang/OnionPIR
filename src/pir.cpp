@@ -55,9 +55,8 @@ void PirParams::print_values() {
             << seal_params_.coeff_modulus().size() << std::endl;
   std::cout << "  seal_params_.plain_modulus().bitcount()  = "
             << seal_params_.plain_modulus().bit_count() << std::endl;
-  std::cout
-      << "===================================================================="
-      << std::endl;
+  std::cout << "=============================================================="
+            << std::endl;
 }
 
 size_t PirParams::get_num_entries_per_plaintext() const {
