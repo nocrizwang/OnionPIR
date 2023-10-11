@@ -121,7 +121,7 @@ PirServer::evaluate_gsw_product(std::vector<seal::Ciphertext> &result,
     }
   }
 
-  return result;
+  return result_vector;
 }
 
 std::vector<seal::Ciphertext> PirServer::expand_query(uint32_t client_id,

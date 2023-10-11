@@ -13,8 +13,8 @@ void run_tests() {
   std::cout << "Running tests..." << std::endl;
 
   // bfv_example();
-  // test_external_product();
-  test_pir();
+  test_external_product();
+  // test_pir();
 }
 
 void bfv_example() {
@@ -61,10 +61,10 @@ void test_external_product() {
   a[1] = 2;
   a[2] = 6;
   b[0] = 1;
-  b[1] = 2;
-  b[2] = 6;
 
   encryptor_.encrypt_symmetric(a, a_encrypted);
+
+  std::cout << "Noise budget before: " << decryptor_.invariant_noise_budget(a_encrypted) << std::endl;
   GSWCiphertext b_gsw;
   gsw::encrypt_plain_to_gsw(b, encryptor_, decryptor_, b_gsw);
 
@@ -76,13 +76,22 @@ void test_external_product() {
   debug(a_encrypted.data(0), "RESULT[0]", coeff_count);
   debug(a_encrypted.data(1), "RESULT[1]", coeff_count);
   decryptor_.decrypt(a_encrypted, result);
-  std::cout << "Noise budget: " << decryptor_.invariant_noise_budget(a_encrypted) << std::endl;
+  std::cout << "Noise budget after: " << decryptor_.invariant_noise_budget(a_encrypted) << std::endl;
+  gsw::external_product(b_gsw, a_encrypted, coeff_count, a_encrypted);
+  decryptor_.decrypt(a_encrypted, result);
+  std::cout << "Noise budget after 2: " << decryptor_.invariant_noise_budget(a_encrypted) << std::endl;
+  gsw::external_product(b_gsw, a_encrypted, coeff_count, a_encrypted);
+  decryptor_.decrypt(a_encrypted, result);
+  std::cout << "Noise budget after 3: " << decryptor_.invariant_noise_budget(a_encrypted) << std::endl;
+  gsw::external_product(b_gsw, a_encrypted, coeff_count, a_encrypted);
+  decryptor_.decrypt(a_encrypted, result);
+  std::cout << "Noise budget after 4: " << decryptor_.invariant_noise_budget(a_encrypted) << std::endl;
   std::cout << result.to_string() << std::endl;
   std::cout << result.nonzero_coeff_count() << std::endl;
 }
 
 void test_pir() {
-  PirParams pir_params(256, 2, 200000, 5, 15);
+  PirParams pir_params(2048, 2, 1600000, 5, 15);
   pir_params.print_values();
   const int client_id = 0;
   PirServer server(pir_params);
@@ -96,13 +105,15 @@ void test_pir() {
 #endif
 
   std::vector<Entry> data(pir_params.get_num_entries());
-  for (auto &entry : data) {
-    entry.push_back(4);
-    entry.push_back(8);
-    entry.push_back(12);
-    entry.push_back(16);
-    entry.push_back(20);
+
+  for (int i = 0; i < pir_params.get_num_entries(); i++) {
+    data[i].push_back(123);
+    data[i].push_back((i / 1000000) % 100);
+    data[i].push_back((i / 10000) % 100);
+    data[i].push_back((i / 100) % 100);
+    data[i].push_back(i % 100);
   }
+
   server.set_database(data);
   std::cout << "DB set" << std::endl;
 
@@ -114,17 +125,12 @@ void test_pir() {
 
   std::cout << "Client registered" << std::endl;
 
-  int id = 135005;
+  int id = 1234567;
   auto result = server.make_query(client_id, client.generate_query(id));
 
   std::cout << "Result: " << std::endl;
   std::cout << client.get_decryptor()->invariant_noise_budget(result[0]) << std::endl;
   auto decrypted_result = client.decrypt_result(result);
-#ifdef _DEBUG
-  for (auto &res : decrypted_result) {
-    // std::cout << res.to_string() << std::endl;
-  }
-#endif
   print_entry(client.get_entry_from_plaintext(id, decrypted_result[0]));
 
 #ifdef _BENCHMARK
