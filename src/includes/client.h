@@ -31,9 +31,8 @@ private:
   PirParams pir_params_;
   uint64_t DBSize_;
   std::vector<uint64_t> dims_;
-
-  seal::Encryptor *encryptor_;
   seal::Decryptor *decryptor_;
+  seal::Encryptor *encryptor_;
   seal::Evaluator *evaluator_;
   seal::KeyGenerator *keygen_;
   seal::SEALContext *context_;

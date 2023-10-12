@@ -81,6 +81,12 @@ PirQuery PirClient::generate_query(std::uint64_t entry_index) {
   auto coeff_modulus = context_data->parms().coeff_modulus();
   auto coeff_mod_count = coeff_modulus.size();
 
+  __uint128_t inv[coeff_mod_count];
+  for (int k = 0; k < coeff_mod_count; k++) {
+    uint64_t result;
+    seal::util::try_invert_uint_mod(bits_per_ciphertext, coeff_modulus[k], result);
+    inv[k] = result;
+  }
   for (int i = 1; i < query_indexes.size(); i++) {
     std::cout << "query_indexes[i]: " << ptr << ' ' << l << ' ' << query_indexes[i] << std::endl;
     auto pt = query.data(0) + ptr + query_indexes[i] * l;
@@ -88,7 +94,7 @@ PirQuery PirClient::generate_query(std::uint64_t entry_index) {
       for (int k = 0; k < coeff_mod_count; k++) {
         auto pad = k * coeff_count;
         __uint128_t mod = coeff_modulus[k].value();
-        auto coef = (__uint128_t(inverse) << ((l - 1 - j) * base_log2)) % mod;
+        auto coef = ((__uint128_t(1) << ((l - 1 - j) * base_log2)) % mod) * inv[k] % mod;
         pt[j + pad] = (pt[j + pad] + coef) % mod;
       }
     }

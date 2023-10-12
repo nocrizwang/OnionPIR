@@ -109,7 +109,9 @@ PirServer::evaluate_gsw_product(std::vector<seal::Ciphertext> &result,
   auto block_size = result.size() / selection_vector.size();
 
   for (int i = 0; i < block_size; i++) {
+    // std::cout<<"ORIG noise: "<<decryptor_->invariant_noise_budget(result[i]) << std::endl;
     gsw::external_product(selection_vector[0], result[i], result[0].size(), result[i]);
+    // std::cout<<"PROD noise: "<<decryptor_->invariant_noise_budget(result[i]) << std::endl;
     result_vector.push_back(result[i]);
   }
 
@@ -189,7 +191,6 @@ std::vector<seal::Ciphertext> PirServer::make_query(uint32_t client_id, PirQuery
       }
       gsw::query_to_gsw(lwe_vector, client_gsw_keys_[client_id], gsw_vector[j]);
     }
-
     result = evaluate_gsw_product(result, gsw_vector);
   }
 

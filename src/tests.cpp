@@ -13,8 +13,8 @@ void run_tests() {
   std::cout << "Running tests..." << std::endl;
 
   // bfv_example();
-  test_external_product();
-  // test_pir();
+  // test_external_product();
+  test_pir();
 }
 
 void bfv_example() {
@@ -64,34 +64,27 @@ void test_external_product() {
 
   encryptor_.encrypt_symmetric(a, a_encrypted);
 
-  std::cout << "Noise budget before: " << decryptor_.invariant_noise_budget(a_encrypted) << std::endl;
+  std::cout << "Noise budget before: " << decryptor_.invariant_noise_budget(a_encrypted)
+            << std::endl;
   GSWCiphertext b_gsw;
   gsw::encrypt_plain_to_gsw(b, encryptor_, decryptor_, b_gsw);
 
   debug(a_encrypted.data(0), "AENC[0]", coeff_count);
   debug(a_encrypted.data(1), "AENC[1]", coeff_count);
 
-  gsw::external_product(b_gsw, a_encrypted, coeff_count, a_encrypted);
+  for (int i = 0; i < 100; i++) {
+    gsw::external_product(b_gsw, a_encrypted, coeff_count, a_encrypted);
+    decryptor_.decrypt(a_encrypted, result);
+    std::cout << "Noise budget after: " << decryptor_.invariant_noise_budget(a_encrypted)
+              << std::endl;
+  }
 
-  debug(a_encrypted.data(0), "RESULT[0]", coeff_count);
-  debug(a_encrypted.data(1), "RESULT[1]", coeff_count);
-  decryptor_.decrypt(a_encrypted, result);
-  std::cout << "Noise budget after: " << decryptor_.invariant_noise_budget(a_encrypted) << std::endl;
-  gsw::external_product(b_gsw, a_encrypted, coeff_count, a_encrypted);
-  decryptor_.decrypt(a_encrypted, result);
-  std::cout << "Noise budget after 2: " << decryptor_.invariant_noise_budget(a_encrypted) << std::endl;
-  gsw::external_product(b_gsw, a_encrypted, coeff_count, a_encrypted);
-  decryptor_.decrypt(a_encrypted, result);
-  std::cout << "Noise budget after 3: " << decryptor_.invariant_noise_budget(a_encrypted) << std::endl;
-  gsw::external_product(b_gsw, a_encrypted, coeff_count, a_encrypted);
-  decryptor_.decrypt(a_encrypted, result);
-  std::cout << "Noise budget after 4: " << decryptor_.invariant_noise_budget(a_encrypted) << std::endl;
   std::cout << result.to_string() << std::endl;
   std::cout << result.nonzero_coeff_count() << std::endl;
 }
 
 void test_pir() {
-  PirParams pir_params(2048, 2, 1600000, 5, 15);
+  PirParams pir_params(2048, 5, 1600000, 5, 8);
   pir_params.print_values();
   const int client_id = 0;
   PirServer server(pir_params);
