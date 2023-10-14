@@ -109,9 +109,9 @@ PirServer::evaluate_gsw_product(std::vector<seal::Ciphertext> &result,
   auto block_size = result.size() / selection_vector.size();
 
   for (int i = 0; i < block_size; i++) {
-    // std::cout<<"ORIG noise: "<<decryptor_->invariant_noise_budget(result[i]) << std::endl;
+    std::cout << "ORIG noise: " << decryptor_->invariant_noise_budget(result[i]) << std::endl;
     gsw::external_product(selection_vector[0], result[i], result[0].size(), result[i]);
-    // std::cout<<"PROD noise: "<<decryptor_->invariant_noise_budget(result[i]) << std::endl;
+    std::cout << "PROD noise: " << decryptor_->invariant_noise_budget(result[i]) << std::endl;
     result_vector.push_back(result[i]);
   }
 
@@ -236,7 +236,7 @@ void PirServer::set_database(std::vector<Entry> new_db) {
 
   db_ = Database();
 
-  const uint128_t coeff_mask = (1 << (bits_per_coeff + 1)) - 1;
+  const uint128_t coeff_mask = (1 << (bits_per_coeff)) - 1;
   uint128_t data_buffer = 0;
   uint8_t data_offset = 0;
   for (int i = 0; i < num_plaintexts; i++) {
@@ -257,6 +257,10 @@ void PirServer::set_database(std::vector<Entry> new_db) {
           data_offset -= bits_per_coeff;
         }
       }
+    }
+    if (data_offset > 0) {
+      plaintext[index] = data_buffer & coeff_mask;
+      index++;
     }
     db_.push_back(plaintext);
   }

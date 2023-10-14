@@ -87,14 +87,24 @@ PirQuery PirClient::generate_query(std::uint64_t entry_index) {
     seal::util::try_invert_uint_mod(bits_per_ciphertext, coeff_modulus[k], result);
     inv[k] = result;
   }
+
+  uint128_t pow2[coeff_mod_count][l + 1];
+  for (int i = 0; i < coeff_mod_count; i++) {
+    uint64_t mod = coeff_modulus[i].value();
+    uint64_t pow = 1;
+    for (int j = 0; j <= l; j++) {
+      pow2[i][j] = pow;
+      pow = (pow << base_log2) % mod;
+    }
+  }
+
   for (int i = 1; i < query_indexes.size(); i++) {
-    std::cout << "query_indexes[i]: " << ptr << ' ' << l << ' ' << query_indexes[i] << std::endl;
     auto pt = query.data(0) + ptr + query_indexes[i] * l;
     for (int j = 0; j < l; j++) {
       for (int k = 0; k < coeff_mod_count; k++) {
         auto pad = k * coeff_count;
         __uint128_t mod = coeff_modulus[k].value();
-        auto coef = ((__uint128_t(1) << ((l - 1 - j) * base_log2)) % mod) * inv[k] % mod;
+        auto coef = pow2[k][l - 1 - j] * inv[k] % mod;
         pt[j + pad] = (pt[j + pad] + coef) % mod;
       }
     }
@@ -164,34 +174,24 @@ Entry PirClient::get_entry_from_plaintext(size_t entry_index, seal::Plaintext pl
   size_t coeff_offset = start_position_in_plaintext % num_bits_per_coeff;
 
   // Size of entry in bits
-  size_t entry_size = pir_params_.get_entry_size() * 8;
+  size_t entry_size = pir_params_.get_entry_size();
   Entry result;
-  // Entry value is a buffer to handle cases where the number of bits stored by
-  // the coefficients is not divisible by 8.
-  uint8_t entry_value = 0;
-  for (int i = 0; i < entry_size;) {
-    while (coeff_offset < num_bits_per_coeff) {
-      if (entry_value != 0) {
-        // Num empty btis in entry_value
-        uint8_t bits_needed = i % 8;
-        uint8_t bitmask = (1 << (bits_needed + 1)) - 1;
-        entry_value += (plaintext[coeff_index] & bitmask) << (8 - bits_needed);
-        result.push_back(entry_value);
-        entry_value = 0;
-        i += bits_needed;
-        coeff_offset += bits_needed;
-      } else if (num_bits_per_coeff - coeff_offset >= 8) {
-        result.push_back((plaintext[coeff_index] >> coeff_offset) & 255);
-        i += 8;
-        coeff_offset += 8;
-      } else {
-        entry_value += (plaintext[coeff_index] >> coeff_offset);
-        i += (num_bits_per_coeff - coeff_offset);
-        coeff_offset = num_bits_per_coeff;
-      }
+
+  uint128_t data_buffer = plaintext.data()[coeff_index] >> coeff_offset;
+  uint8_t data_offset = num_bits_per_coeff - coeff_offset;
+
+  while (result.size() < entry_size) {
+    if (data_offset >= 8) {
+      result.push_back(data_buffer & 0xFF);
+      data_buffer >>= 8;
+      data_offset -= 8;
+    } else {
+      coeff_index += 1;
+      uint128_t next_buffer = plaintext.data()[coeff_index];
+      data_buffer |= next_buffer << data_offset;
+      data_offset += num_bits_per_coeff;
     }
-    coeff_offset = 0;
-    ++coeff_index;
   }
+
   return result;
 }

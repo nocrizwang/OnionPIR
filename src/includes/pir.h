@@ -23,10 +23,8 @@ public:
       @param entry_size - Size of each entry in bytes
       @param l - Parameter l for GSW scheme
       */
-  PirParams(uint64_t DBSize, uint64_t ndim, uint64_t num_entries,
-            uint64_t entry_size, uint64_t l)
-      : DBSize_(DBSize),
-        seal_params_(seal::EncryptionParameters(seal::scheme_type::bfv)),
+  PirParams(uint64_t DBSize, uint64_t ndim, uint64_t num_entries, uint64_t entry_size, uint64_t l)
+      : DBSize_(DBSize), seal_params_(seal::EncryptionParameters(seal::scheme_type::bfv)),
         num_entries_(num_entries), entry_size_(entry_size), l_(l) {
     uint64_t first_dim = DBSize >> (ndim - 1);
     if (first_dim < 128) {
@@ -42,12 +40,12 @@ public:
     }
     seal_params_.set_poly_modulus_degree(DatabaseConstants::PolyDegree);
 
-    seal_params_.set_coeff_modulus(
-        CoeffModulus::BFVDefault(DatabaseConstants::PolyDegree));
+    seal_params_.set_coeff_modulus(CoeffModulus::BFVDefault(DatabaseConstants::PolyDegree));
     // seal_params_.set_coeff_modulus(CoeffModulus::Create(DatabaseConstants::PolyDegree,
     // {55, 50, 50, 60}));
-    // seal_params_.set_plain_modulus(PlainModulus::Batching(DatabaseConstants::PolyDegree,
-    // DatabaseConstants::PlaintextModBits));
+    // seal_params_.set_plain_modulus(
+    //     PlainModulus::Batching(DatabaseConstants::PolyDegree,
+    //     DatabaseConstants::PlaintextModBits));
     seal_params_.set_plain_modulus(DatabaseConstants::PlaintextMod);
 
     if (DBSize_ * get_num_entries_per_plaintext() < num_entries) {
@@ -55,7 +53,10 @@ public:
     }
 
     auto modulus = seal_params_.coeff_modulus();
-    int bits = modulus[0].bit_count() + modulus[1].bit_count();
+    int bits = 0;
+    for (int i = 0; i < modulus.size() - 1; i++) {
+      bits += modulus[i].bit_count();
+    }
     base_log2_ = (bits + l - 1) / l;
 
     gsw::l = l;

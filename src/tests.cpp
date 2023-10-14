@@ -5,9 +5,10 @@
 #include "server.h"
 #include "utils.h"
 #include <iostream>
+#include <random>
 
 void run_tests() {
-  PirParams pir_params(256, 2, 200000, 5, 15);
+  PirParams pir_params(256, 2, 20000, 5, 15);
   // pir_params.print_values();
 
   std::cout << "Running tests..." << std::endl;
@@ -18,7 +19,7 @@ void run_tests() {
 }
 
 void bfv_example() {
-  PirParams pir_params(256, 2, 200000, 5, 5);
+  PirParams pir_params(256, 2, 20000, 5, 5);
   auto context_ = seal::SEALContext(pir_params.get_seal_params());
   auto evaluator_ = seal::Evaluator(context_);
   auto keygen_ = seal::KeyGenerator(context_);
@@ -27,6 +28,10 @@ void bfv_example() {
   auto decryptor_ = new seal::Decryptor(context_, secret_key_);
 
   uint64_t poly_degree = pir_params.get_seal_params().poly_modulus_degree();
+  std::cout << "Size f: " << context_.key_context_data()->parms().coeff_modulus().size()
+            << std::endl;
+  std::cout << "Size f: " << context_.first_context_data()->parms().coeff_modulus().size()
+            << std::endl;
   seal::Plaintext a(poly_degree), b(poly_degree), result;
   a[0] = 1;
   a[1] = 9;
@@ -41,7 +46,8 @@ void bfv_example() {
 }
 
 void test_external_product() {
-  PirParams pir_params(256, 2, 200000, 5, 15);
+  PirParams pir_params(256, 2, 20000, 5, 15);
+  pir_params.print_values();
   auto parms = pir_params.get_seal_params();
   auto context_ = seal::SEALContext(parms);
   auto evaluator_ = seal::Evaluator(context_);
@@ -57,9 +63,9 @@ void test_external_product() {
   auto &context_data = *context_.first_context_data();
   std::vector<uint64_t> b(poly_degree);
 
-  a[0] = 1;
-  a[1] = 2;
-  a[2] = 6;
+  a[0] = 123;
+  a[1] = 221;
+  a[2] = 69;
   b[0] = 1;
 
   encryptor_.encrypt_symmetric(a, a_encrypted);
@@ -72,7 +78,7 @@ void test_external_product() {
   debug(a_encrypted.data(0), "AENC[0]", coeff_count);
   debug(a_encrypted.data(1), "AENC[1]", coeff_count);
 
-  for (int i = 0; i < 100; i++) {
+  for (int i = 0; i < 1; i++) {
     gsw::external_product(b_gsw, a_encrypted, coeff_count, a_encrypted);
     decryptor_.decrypt(a_encrypted, result);
     std::cout << "Noise budget after: " << decryptor_.invariant_noise_budget(a_encrypted)
@@ -83,8 +89,17 @@ void test_external_product() {
   std::cout << result.nonzero_coeff_count() << std::endl;
 }
 
+Entry generate_entry(int id, int len) {
+  Entry entry;
+  std::mt19937 rng(id);
+  for (int i = 0; i < len; i++) {
+    entry.push_back(rng() % 256);
+  }
+  return entry;
+}
+
 void test_pir() {
-  PirParams pir_params(2048, 5, 1600000, 5, 8);
+  PirParams pir_params(2048, 5, 2000, 12000, 9);
   pir_params.print_values();
   const int client_id = 0;
   PirServer server(pir_params);
@@ -100,11 +115,7 @@ void test_pir() {
   std::vector<Entry> data(pir_params.get_num_entries());
 
   for (int i = 0; i < pir_params.get_num_entries(); i++) {
-    data[i].push_back(123);
-    data[i].push_back((i / 1000000) % 100);
-    data[i].push_back((i / 10000) % 100);
-    data[i].push_back((i / 100) % 100);
-    data[i].push_back(i % 100);
+    data[i] = generate_entry(i, pir_params.get_entry_size());
   }
 
   server.set_database(data);
@@ -112,19 +123,30 @@ void test_pir() {
 
   PirClient client(pir_params);
   std::cout << "Client initialized" << std::endl;
-
+  server.decryptor_ = client.get_decryptor();
   server.set_client_galois_key(client_id, client.create_galois_keys());
   server.set_client_gsw_key(client_id, client.generate_gsw_from_key());
 
   std::cout << "Client registered" << std::endl;
 
-  int id = 1234567;
+  int id = 1234;
   auto result = server.make_query(client_id, client.generate_query(id));
 
   std::cout << "Result: " << std::endl;
   std::cout << client.get_decryptor()->invariant_noise_budget(result[0]) << std::endl;
   auto decrypted_result = client.decrypt_result(result);
-  print_entry(client.get_entry_from_plaintext(id, decrypted_result[0]));
+
+  // std::cout << "Decrypted result: " << decrypted_result[0].to_string() << std::endl;
+  Entry entry = client.get_entry_from_plaintext(id, decrypted_result[0]);
+  if (entry == data[id]) {
+    std::cout << "Success!" << std::endl;
+  } else {
+    std::cout << "Failure!" << std::endl;
+  }
+  // std::cout << "Result:\t";
+  // print_entry(entry);
+  // std::cout << "Data:\t";
+  // print_entry(data[id]);
 
 #ifdef _BENCHMARK
   std::cout << "Noise budget remaining: "

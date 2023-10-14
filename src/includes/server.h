@@ -26,6 +26,8 @@ public:
   void set_client_galois_key(uint32_t client_id, seal::GaloisKeys client_key);
   void set_client_gsw_key(uint32_t client_id, GSWCiphertext &&gsw_key);
 
+  seal::Decryptor *decryptor_;
+
 private:
   uint64_t DBSize_;
   seal::SEALContext context_;

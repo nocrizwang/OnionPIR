@@ -2,8 +2,7 @@
 #include "seal/seal.h"
 #include <iostream>
 
-template <typename T> 
-std::string to_string(T x) {
+template <typename T> std::string to_string(T x) {
   std::string ret;
   if (x == 0) {
     return "0";
@@ -19,8 +18,11 @@ std::string to_string(T x) {
 template <typename T> inline void debug(T *ptr, std::string name, int cnt) {
   // std::cout << name << ": ";
   // for (int i = 0; i < 10; i++) {
-  //   if (ptr[i] != 0 || ptr[i + cnt] != 0) {
-  //     std::cout << "(" << to_string(ptr[i]) << ", " << to_string(ptr[i + cnt]) << ") *X^" << i << ' ';
+  //   if (ptr[i] != 0 || ptr[i + cnt] != 0 || ptr[i + cnt + cnt] != 0 ||
+  //       ptr[i + cnt + cnt + cnt] != 0) {
+  //     std::cout << "(" << to_string(ptr[i]) << ", " << to_string(ptr[i + cnt]) << ", "
+  //               << to_string(ptr[i + cnt + cnt]) << ", " << to_string(ptr[i + cnt + cnt + cnt])
+  //               << ") *X^" << i << ' ';
   //   }
   // }
   // std::cout << std::endl;
@@ -31,10 +33,8 @@ namespace utils {
     Helper function for multiply_poly_acum. Multiplies two operands together and
    stores the result in product_acum.
 */
-inline void multiply_acum(uint64_t op1, uint64_t op2,
-                          __uint128_t &product_acum) {
-  product_acum = product_acum +
-                 static_cast<__uint128_t>(op1) * static_cast<__uint128_t>(op2);
+inline void multiply_acum(uint64_t op1, uint64_t op2, __uint128_t &product_acum) {
+  product_acum = product_acum + static_cast<__uint128_t>(op1) * static_cast<__uint128_t>(op2);
 }
 
 /*!
@@ -45,8 +45,8 @@ inline void multiply_acum(uint64_t op1, uint64_t op2,
     @param size - Number of polynomial coefficients
     @param result - Pointer to the start of the data of the result polynomial
 */
-inline void multiply_poly_acum(const uint64_t *ct_ptr, const uint64_t *pt_ptr,
-                               size_t size, uint128_t *result) {
+inline void multiply_poly_acum(const uint64_t *ct_ptr, const uint64_t *pt_ptr, size_t size,
+                               uint128_t *result) {
   for (int cc = 0; cc < size; cc += 32) {
     multiply_acum(ct_ptr[cc], pt_ptr[cc], result[cc]);
     multiply_acum(ct_ptr[cc + 1], pt_ptr[cc + 1], result[cc + 1]);
@@ -82,11 +82,9 @@ inline void multiply_poly_acum(const uint64_t *ct_ptr, const uint64_t *pt_ptr,
     multiply_acum(ct_ptr[cc + 31], pt_ptr[cc + 31], result[cc + 31]);
   }
 }
-void negacyclic_shift_poly_coeffmod(seal::util::ConstCoeffIter poly,
-                                    size_t coeff_count, size_t shift,
-                                    const seal::Modulus &modulus,
+void negacyclic_shift_poly_coeffmod(seal::util::ConstCoeffIter poly, size_t coeff_count,
+                                    size_t shift, const seal::Modulus &modulus,
                                     seal::util::CoeffIter result);
-void shift_polynomial(seal::EncryptionParameters &params,
-                      seal::Ciphertext &encrypted,
+void shift_polynomial(seal::EncryptionParameters &params, seal::Ciphertext &encrypted,
                       seal::Ciphertext &destination, size_t index);
 } // namespace utils

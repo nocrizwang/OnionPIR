@@ -191,6 +191,17 @@ void gsw::encrypt_plain_to_gsw(std::vector<uint64_t> const &plaintext,
 
   output.clear();
   assert(plaintext.size() == coeff_count * coeff_mod_count || plaintext.size() == coeff_count);
+
+  uint128_t pow2[coeff_mod_count][l + 1];
+  for (int i = 0; i < coeff_mod_count; i++) {
+    uint64_t mod = coeff_modulus[i].value();
+    uint64_t pow = 1;
+    for (int j = 0; j <= l; j++) {
+      pow2[i][j] = pow;
+      pow = (pow << base_log2) % mod;
+    }
+  }
+
   for (int poly_id = 0; poly_id <= 1; poly_id++) {
     for (int i = l - 1; i >= 0; i--) {
       seal::Ciphertext cipher;
@@ -201,7 +212,7 @@ void gsw::encrypt_plain_to_gsw(std::vector<uint64_t> const &plaintext,
       for (int mod_id = 0; mod_id < coeff_mod_count; mod_id++) {
         auto pad = (mod_id * coeff_count);
         __uint128_t mod = coeff_modulus[mod_id].value();
-        uint64_t coef = (__uint128_t(1) << bits) % mod;
+        uint64_t coef = pow2[mod_id][i];
         auto pt = plaintext.data();
         if (plaintext.size() == coeff_count * coeff_mod_count) {
           pt = plaintext.data() + pad;
