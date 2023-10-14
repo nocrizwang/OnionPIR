@@ -123,7 +123,7 @@ seal::GaloisKeys PirClient::create_galois_keys() {
   // with 2048 bits per message and a total query size of 2. The 2048 bits will
   // be encoded in the first 2048 coeffs of the polynomial. 2^compression_factor
   // must be less than or equal to polynomial modulus degree and bit_length.
-  int compression_factor = std::log2(dims_[0]);
+  int compression_factor = std::log2(dims_[0] + pir_params_.get_l() * (dims_.size() - 1) * 2);
 
   size_t min_ele = params_.poly_modulus_degree() / pow(2, compression_factor) + 1;
   for (size_t i = min_ele; i <= params_.poly_modulus_degree() + 1; i = (i - 1) * 2 + 1) {

@@ -99,7 +99,7 @@ Entry generate_entry(int id, int len) {
 }
 
 void test_pir() {
-  PirParams pir_params(2048, 5, 2000, 12000, 9);
+  PirParams pir_params(1 << 16, 10, 1 << 16, 12000, 9);
   pir_params.print_values();
   const int client_id = 0;
   PirServer server(pir_params);
@@ -129,8 +129,13 @@ void test_pir() {
 
   std::cout << "Client registered" << std::endl;
 
-  int id = 1234;
+  auto start_time = std::chrono::high_resolution_clock::now();
+  int id = 32563;
   auto result = server.make_query(client_id, client.generate_query(id));
+  auto end_time = std::chrono::high_resolution_clock::now();
+
+  auto elapsed_time = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time);
+  std::cout << "Query Time: " << elapsed_time.count() << " ms" << std::endl;
 
   std::cout << "Result: " << std::endl;
   std::cout << client.get_decryptor()->invariant_noise_budget(result[0]) << std::endl;
