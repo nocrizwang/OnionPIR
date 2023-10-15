@@ -16,6 +16,26 @@ seal::SEALContext const *context;
 // multiplication, assuming that both the GSWCiphertext and decomposed bfv is in
 // polynomial coefficient representation.
 
+void gsw::gsw_ntt_negacyclic_harvey(GSWCiphertext &gsw) {
+  const auto &context_data = context->first_context_data();
+  auto &parms2 = context_data->parms();
+  auto &coeff_modulus = parms2.coeff_modulus();
+  size_t coeff_count = parms2.poly_modulus_degree();
+  size_t coeff_mod_count = coeff_modulus.size();
+  auto ntt_tables = context_data->small_ntt_tables();
+
+  for (auto &poly : gsw) {
+    seal::util::CoeffIter gsw_poly_ptr(poly.data());
+    for (int i = 0; i < coeff_mod_count; i++) {
+      seal::util::ntt_negacyclic_harvey(gsw_poly_ptr + coeff_count * i, *(ntt_tables + i));
+    }
+    seal::util::CoeffIter gsw_poly_ptr2(poly.data() + coeff_count * coeff_mod_count);
+    for (int i = 0; i < coeff_mod_count; i++) {
+      seal::util::ntt_negacyclic_harvey(gsw_poly_ptr2 + coeff_count * i, *(ntt_tables + i));
+    }
+  }
+}
+
 void gsw::external_product(GSWCiphertext gsw_enc, seal::Ciphertext bfv, size_t ct_poly_size,
                            seal::Ciphertext &res_ct) {
 
@@ -26,24 +46,8 @@ void gsw::external_product(GSWCiphertext gsw_enc, seal::Ciphertext bfv, size_t c
   size_t coeff_mod_count = coeff_modulus.size();
   auto ntt_tables = context_data->small_ntt_tables();
 
-  debug(bfv.data(0), "BFV[0]", coeff_count);
-  debug(bfv.data(1), "BFV[1]", coeff_count);
-
   std::vector<std::vector<uint64_t>> decomposed_bfv;
   decomp_rlwe(bfv, decomposed_bfv);
-
-  for (auto &poly : gsw_enc) {
-    seal::util::CoeffIter gsw_poly_ptr(poly.data());
-    for (int i = 0; i < coeff_mod_count; i++) {
-      seal::util::ntt_negacyclic_harvey(gsw_poly_ptr + coeff_count * i, *(ntt_tables + i));
-    }
-    seal::util::CoeffIter gsw_poly_ptr2(poly.data() + coeff_count * coeff_mod_count);
-    for (int i = 0; i < coeff_mod_count; i++) {
-      seal::util::ntt_negacyclic_harvey(gsw_poly_ptr2 + coeff_count * i, *(ntt_tables + i));
-    }
-  }
-
-  debug(gsw_enc[0].data() + coeff_count * coeff_mod_count, "gswenc[0][1]", coeff_count);
 
   for (auto &poly : decomposed_bfv) {
     seal::util::CoeffIter bfv_poly_ptr(poly);
@@ -52,13 +56,10 @@ void gsw::external_product(GSWCiphertext gsw_enc, seal::Ciphertext bfv, size_t c
     }
   }
 
-  debug(decomposed_bfv[3].data(), "bfvdec[0]", coeff_count);
-
   // Use the delayed mod speedup
   std::vector<std::vector<uint128_t>> result(
       2, std::vector<uint128_t>(coeff_count * coeff_mod_count, 0));
 
-  // std::cout << "GSW size " << gsw_enc.size() << std::endl;
   for (int k = 0; k < 2; ++k) {
     for (size_t j = 0; j < 2 * l; j++) {
       seal::util::ConstCoeffIter encrypted_gsw_ptr(gsw_enc[j].data() +
@@ -68,9 +69,6 @@ void gsw::external_product(GSWCiphertext gsw_enc, seal::Ciphertext bfv, size_t c
                                 coeff_count * coeff_mod_count, result[k].data());
     }
   }
-
-  debug(result[0].data(), "result[0]", coeff_count);
-  debug(result[1].data(), "result[1]", coeff_count);
 
   for (size_t poly_id = 0; poly_id < 2; poly_id++) {
     auto ct_ptr = res_ct.data(poly_id);
@@ -85,18 +83,12 @@ void gsw::external_product(GSWCiphertext gsw_enc, seal::Ciphertext bfv, size_t c
     }
   }
 
-  // debug(res_ct.data(0), "result[0]", coeff_count);
-  // debug(res_ct.data(1), "result[1]", coeff_count);
-
   for (int i = 0; i < coeff_mod_count; i++) {
     seal::util::inverse_ntt_negacyclic_harvey(res_ct.data(0) + coeff_count * i, *(ntt_tables + i));
   }
   for (int i = 0; i < coeff_mod_count; i++) {
     seal::util::inverse_ntt_negacyclic_harvey(res_ct.data(1) + coeff_count * i, *(ntt_tables + i));
   }
-
-  // debug(res_ct.data(0), "result[0]", coeff_count);
-  // debug(res_ct.data(1), "result[1]", coeff_count);
 }
 
 void gsw::decomp_rlwe(seal::Ciphertext ct, std::vector<std::vector<uint64_t>> &output) {
@@ -178,6 +170,9 @@ void gsw::query_to_gsw(std::vector<seal::Ciphertext> query, GSWCiphertext gsw_ke
       output[i + l].push_back(query[i].data(1)[j]);
     }
   }
+
+
+  gsw_ntt_negacyclic_harvey(output);
 }
 
 void gsw::encrypt_plain_to_gsw(std::vector<uint64_t> const &plaintext,
@@ -236,4 +231,6 @@ void gsw::encrypt_plain_to_gsw(std::vector<uint64_t> const &plaintext,
       output.push_back(row);
     }
   }
+
+  gsw_ntt_negacyclic_harvey(output);
 }

@@ -201,9 +201,14 @@ std::vector<seal::Ciphertext> PirServer::make_query(uint32_t client_id, PirQuery
       }
       gsw::query_to_gsw(lwe_vector, client_gsw_keys_[client_id], gsw_vector[j]);
     }
-    result = evaluate_gsw_product(result, gsw_vector);
+
     auto end_time1 = std::chrono::high_resolution_clock::now();
     auto elapsed_time1 = std::chrono::duration_cast<std::chrono::milliseconds>(end_time1 - end_time0);
+    std::cout<< "Dim " << i << " time: " << elapsed_time1.count() << " ms" << std::endl;
+
+    result = evaluate_gsw_product(result, gsw_vector);
+    end_time1 = std::chrono::high_resolution_clock::now();
+    elapsed_time1 = std::chrono::duration_cast<std::chrono::milliseconds>(end_time1 - end_time0);
     std::cout<< "Dim " << i << " time: " << elapsed_time1.count() << " ms" << std::endl;
     end_time0 = end_time1;
   }

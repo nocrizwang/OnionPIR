@@ -49,4 +49,6 @@ void query_to_gsw(std::vector<seal::Ciphertext> query, GSWCiphertext gsw_key,
 
 void encrypt_plain_to_gsw(std::vector<uint64_t> const &plaintext, seal::Encryptor const &encryptor,
                           seal::Decryptor &decryptor, GSWCiphertext &output);
+
+void gsw_ntt_negacyclic_harvey(GSWCiphertext &gsw);
 } // namespace gsw
