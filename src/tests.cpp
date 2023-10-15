@@ -99,7 +99,7 @@ Entry generate_entry(int id, int len) {
 }
 
 void test_pir() {
-  PirParams pir_params(1 << 16, 10, 1 << 16, 12000, 9);
+  PirParams pir_params(1 << 15, 8, 1<<20, 256, 9);
   pir_params.print_values();
   const int client_id = 0;
   PirServer server(pir_params);
@@ -129,49 +129,62 @@ void test_pir() {
 
   std::cout << "Client registered" << std::endl;
 
-  auto start_time = std::chrono::high_resolution_clock::now();
-  int id = 32563;
-  auto result = server.make_query(client_id, client.generate_query(id));
-  auto end_time = std::chrono::high_resolution_clock::now();
+  for (int i = 0; i < 10; i++) {
+    int id = rand() % pir_params.get_num_entries();
 
-  auto elapsed_time = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time);
-  std::cout << "Query Time: " << elapsed_time.count() << " ms" << std::endl;
+    auto start_time0 = std::chrono::high_resolution_clock::now();
+    auto query = client.generate_query(id);
+    auto start_time = std::chrono::high_resolution_clock::now();
+    auto result = server.make_query(client_id, query);
+    auto end_time = std::chrono::high_resolution_clock::now();
+    auto elapsed_time =
+        std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time);
+    std::cout << "Server Time: " << elapsed_time.count() << " ms" << std::endl;
 
-  std::cout << "Result: " << std::endl;
-  std::cout << client.get_decryptor()->invariant_noise_budget(result[0]) << std::endl;
-  auto decrypted_result = client.decrypt_result(result);
+    std::cout << "Result: " << std::endl;
+    std::cout << client.get_decryptor()->invariant_noise_budget(result[0]) << std::endl;
+    auto decrypted_result = client.decrypt_result(result);
 
-  // std::cout << "Decrypted result: " << decrypted_result[0].to_string() << std::endl;
-  Entry entry = client.get_entry_from_plaintext(id, decrypted_result[0]);
-  if (entry == data[id]) {
-    std::cout << "Success!" << std::endl;
-  } else {
-    std::cout << "Failure!" << std::endl;
+    // std::cout << "Decrypted result: " << decrypted_result[0].to_string() << std::endl;
+    Entry entry = client.get_entry_from_plaintext(id, decrypted_result[0]);
+    auto end_time0 = std::chrono::high_resolution_clock::now();
+
+    auto elapsed_time0 =
+        std::chrono::duration_cast<std::chrono::milliseconds>(end_time0 - start_time0);
+    std::cout << "Client Time: " << elapsed_time0.count() - elapsed_time.count() << " ms"
+              << std::endl;
+    if (entry == data[id]) {
+      std::cout << "Success!" << std::endl;
+    } else {
+      std::cout << "Failure!" << std::endl;
+    }
   }
+
   // std::cout << "Result:\t";
   // print_entry(entry);
   // std::cout << "Data:\t";
   // print_entry(data[id]);
 
-#ifdef _BENCHMARK
-  std::cout << "Noise budget remaining: "
-            << client.get_decryptor()->invariant_noise_budget(result[0]) << " bits" << std::endl;
+  // #ifdef _BENCHMARK
+  //   std::cout << "Noise budget remaining: "
+  //             << client.get_decryptor()->invariant_noise_budget(result[0]) << " bits" <<
+  //             std::endl;
 
-  auto query = client.generate_query(5);
-  auto start_time = std::chrono::high_resolution_clock::now();
-  server.make_query_regular_mod(client_id, query);
-  auto end_time = std::chrono::high_resolution_clock::now();
-  auto elapsed_time = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time);
-  std::cout << "No delayed mod: " << elapsed_time.count() << " ms" << std::endl;
+  //   auto query = client.generate_query(5);
+  //   auto start_time = std::chrono::high_resolution_clock::now();
+  //   server.make_query_regular_mod(client_id, query);
+  //   auto end_time = std::chrono::high_resolution_clock::now();
+  //   auto elapsed_time = std::chrono::duration_cast<std::chrono::milliseconds>(end_time -
+  //   start_time); std::cout << "No delayed mod: " << elapsed_time.count() << " ms" << std::endl;
 
-  start_time = std::chrono::high_resolution_clock::now();
-  server.make_query_delayed_mod(client_id, query);
-  end_time = std::chrono::high_resolution_clock::now();
-  elapsed_time = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time);
-  std::cout << "Delayed mod: " << elapsed_time.count() << " ms" << std::endl;
+  //   start_time = std::chrono::high_resolution_clock::now();
+  //   server.make_query_delayed_mod(client_id, query);
+  //   end_time = std::chrono::high_resolution_clock::now();
+  //   elapsed_time = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time);
+  //   std::cout << "Delayed mod: " << elapsed_time.count() << " ms" << std::endl;
 
-  std::cout << std::endl;
-#endif
+  //   std::cout << std::endl;
+  // #endif
 }
 
 // seal::Plaintext a(coeff_count), result;
