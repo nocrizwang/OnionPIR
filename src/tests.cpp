@@ -80,6 +80,7 @@ void test_external_product() {
 
   for (int i = 0; i < 1; i++) {
     gsw::external_product(b_gsw, a_encrypted, coeff_count, a_encrypted);
+    gsw::cyphertext_inverse_ntt(a_encrypted);
     decryptor_.decrypt(a_encrypted, result);
     std::cout << "Noise budget after: " << decryptor_.invariant_noise_budget(a_encrypted)
               << std::endl;

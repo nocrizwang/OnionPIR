@@ -123,6 +123,9 @@ PirServer::evaluate_gsw_product(std::vector<seal::Ciphertext> &result,
     }
   }
 
+  for(int j=0;j<block_size;j++){
+    gsw::cyphertext_inverse_ntt(result_vector[j]);
+  }
   return result_vector;
 }
 

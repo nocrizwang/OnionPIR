@@ -36,6 +36,22 @@ void gsw::gsw_ntt_negacyclic_harvey(GSWCiphertext &gsw) {
   }
 }
 
+void gsw::cyphertext_inverse_ntt(seal::Ciphertext &ct) {
+  const auto &context_data = context->first_context_data();
+  auto &parms2 = context_data->parms();
+  auto &coeff_modulus = parms2.coeff_modulus();
+  size_t coeff_count = parms2.poly_modulus_degree();
+  size_t coeff_mod_count = coeff_modulus.size();
+  auto ntt_tables = context_data->small_ntt_tables();
+
+  for (int i = 0; i < coeff_mod_count; i++) {
+    seal::util::inverse_ntt_negacyclic_harvey(ct.data(0) + coeff_count * i, *(ntt_tables + i));
+  }
+  for (int i = 0; i < coeff_mod_count; i++) {
+    seal::util::inverse_ntt_negacyclic_harvey(ct.data(1) + coeff_count * i, *(ntt_tables + i));
+  }
+}
+
 void gsw::external_product(GSWCiphertext gsw_enc, seal::Ciphertext bfv, size_t ct_poly_size,
                            seal::Ciphertext &res_ct) {
 
@@ -56,7 +72,6 @@ void gsw::external_product(GSWCiphertext gsw_enc, seal::Ciphertext bfv, size_t c
     }
   }
 
-  // Use the delayed mod speedup
   std::vector<std::vector<uint128_t>> result(
       2, std::vector<uint128_t>(coeff_count * coeff_mod_count, 0));
 
@@ -81,13 +96,6 @@ void gsw::external_product(GSWCiphertext gsw_enc, seal::Ciphertext bfv, size_t c
         ct_ptr[coeff_id + mod_idx] = static_cast<uint64_t>(pt_ptr[coeff_id + mod_idx] % mod);
       }
     }
-  }
-
-  for (int i = 0; i < coeff_mod_count; i++) {
-    seal::util::inverse_ntt_negacyclic_harvey(res_ct.data(0) + coeff_count * i, *(ntt_tables + i));
-  }
-  for (int i = 0; i < coeff_mod_count; i++) {
-    seal::util::inverse_ntt_negacyclic_harvey(res_ct.data(1) + coeff_count * i, *(ntt_tables + i));
   }
 }
 
@@ -163,6 +171,7 @@ void gsw::query_to_gsw(std::vector<seal::Ciphertext> query, GSWCiphertext gsw_ke
 
   for (int i = 0; i < l; i++) {
     external_product(gsw_key, query[i], coeff_count, query[i]);
+    cyphertext_inverse_ntt(query[i]);
     for (int j = 0; j < coeff_count * coeff_mod_count; j++) {
       output[i + l].push_back(query[i].data(0)[j]);
     }
@@ -170,7 +179,6 @@ void gsw::query_to_gsw(std::vector<seal::Ciphertext> query, GSWCiphertext gsw_ke
       output[i + l].push_back(query[i].data(1)[j]);
     }
   }
-
 
   gsw_ntt_negacyclic_harvey(output);
 }

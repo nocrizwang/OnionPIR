@@ -51,4 +51,6 @@ void encrypt_plain_to_gsw(std::vector<uint64_t> const &plaintext, seal::Encrypto
                           seal::Decryptor &decryptor, GSWCiphertext &output);
 
 void gsw_ntt_negacyclic_harvey(GSWCiphertext &gsw);
+
+void cyphertext_inverse_ntt(seal::Ciphertext &ct);
 } // namespace gsw
