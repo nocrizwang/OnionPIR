@@ -152,7 +152,7 @@ void gsw::query_to_gsw(std::vector<seal::Ciphertext> query, GSWCiphertext gsw_ke
                        GSWCiphertext &output) {
   assert(query.size() == l);
   assert(output.size() == 0);
-  output.resize(2 * l);
+  output.resize(l);
 
   const auto &context_data = context->get_context_data(query[0].parms_id());
   auto &parms = context_data->parms();
@@ -168,10 +168,10 @@ void gsw::query_to_gsw(std::vector<seal::Ciphertext> query, GSWCiphertext gsw_ke
       output[i].push_back(query[i].data(1)[j]);
     }
   }
-
+  gsw_ntt_negacyclic_harvey(output);
+  output.resize(2 * l);
   for (int i = 0; i < l; i++) {
     external_product(gsw_key, query[i], coeff_count, query[i]);
-    cyphertext_inverse_ntt(query[i]);
     for (int j = 0; j < coeff_count * coeff_mod_count; j++) {
       output[i + l].push_back(query[i].data(0)[j]);
     }
@@ -179,8 +179,6 @@ void gsw::query_to_gsw(std::vector<seal::Ciphertext> query, GSWCiphertext gsw_ke
       output[i + l].push_back(query[i].data(1)[j]);
     }
   }
-
-  gsw_ntt_negacyclic_harvey(output);
 }
 
 void gsw::encrypt_plain_to_gsw(std::vector<uint64_t> const &plaintext,
