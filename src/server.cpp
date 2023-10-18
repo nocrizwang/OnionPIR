@@ -216,6 +216,7 @@ std::vector<seal::Ciphertext> PirServer::make_query(uint32_t client_id, PirQuery
     end_time0 = end_time1;
   }
 
+  evaluator_.mod_switch_to_next_inplace(result[0]);
   return result;
 }
 
