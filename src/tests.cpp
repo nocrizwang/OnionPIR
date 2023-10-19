@@ -100,7 +100,7 @@ Entry generate_entry(int id, int len) {
 }
 
 void test_pir() {
-  PirParams pir_params(1 << 15, 8, 1<<20, 256, 9);
+  PirParams pir_params(1 << 10, 3, 1<<10, 4000, 9);
   pir_params.print_values();
   const int client_id = 0;
   PirServer server(pir_params);
@@ -136,7 +136,7 @@ void test_pir() {
     auto start_time0 = std::chrono::high_resolution_clock::now();
     auto query = client.generate_query(id);
     auto start_time = std::chrono::high_resolution_clock::now();
-    auto result = server.make_query(client_id, query);
+    auto result = server.make_query(client_id, std::move(query));
     auto end_time = std::chrono::high_resolution_clock::now();
     auto elapsed_time =
         std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time);

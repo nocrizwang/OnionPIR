@@ -21,7 +21,7 @@ extern seal::SEALContext const *context;
   @param res_ct - output ciphertext
 */
 
-void external_product(GSWCiphertext gsw_enc, seal::Ciphertext bfv, size_t ct_poly_size,
+void external_product(GSWCiphertext const &gsw_enc, seal::Ciphertext const &bfv, size_t ct_poly_size,
                       seal::Ciphertext &res_ct);
 
 /*!
@@ -34,7 +34,7 @@ void external_product(GSWCiphertext gsw_enc, seal::Ciphertext bfv, size_t ct_pol
   vectors of polynomial coefficients
   @param pool - SEAL memory pool
 */
-void decomp_rlwe(seal::Ciphertext ct, std::vector<std::vector<uint64_t>> &output);
+void decomp_rlwe(seal::Ciphertext const &ct, std::vector<std::vector<uint64_t>> &output);
 
 /*!
   Generates a GSW ciphertext from a BFV ciphertext query.

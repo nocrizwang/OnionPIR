@@ -176,7 +176,7 @@ void PirServer::set_client_gsw_key(uint32_t client_id, GSWCiphertext &&gsw_key) 
   client_gsw_keys_[client_id] = gsw_key;
 }
 
-std::vector<seal::Ciphertext> PirServer::make_query(uint32_t client_id, PirQuery query) {
+std::vector<seal::Ciphertext> PirServer::make_query(uint32_t client_id, PirQuery &&query) {
 
   auto start_time = std::chrono::high_resolution_clock::now();
   std::vector<seal::Ciphertext> query_vector = expand_query(client_id, query);
@@ -238,7 +238,7 @@ std::vector<seal::Ciphertext> PirServer::make_query_regular_mod(uint32_t client_
   return result;
 }
 
-void PirServer::set_database(std::vector<Entry> new_db) {
+void PirServer::set_database(std::vector<Entry> &new_db) {
   db_ = Database();
 
   // Flattens data into vector of u8s and pads each entry with 0s to entry_size

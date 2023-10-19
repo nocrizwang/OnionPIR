@@ -17,8 +17,8 @@ public:
   /*!
     Sets the database to a new database
   */
-  void set_database(std::vector<Entry> new_db);
-  std::vector<seal::Ciphertext> make_query(uint32_t client_id, PirQuery query);
+  void set_database(std::vector<Entry> &new_db);
+  std::vector<seal::Ciphertext> make_query(uint32_t client_id, PirQuery &&query);
   std::vector<seal::Ciphertext> make_query_delayed_mod(uint32_t client_id, PirQuery query);
   std::vector<seal::Ciphertext> make_query_regular_mod(uint32_t client_id, PirQuery query);
   std::vector<seal::Ciphertext> evaluate_gsw_product(std::vector<seal::Ciphertext> &result,

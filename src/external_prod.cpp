@@ -52,8 +52,8 @@ void gsw::cyphertext_inverse_ntt(seal::Ciphertext &ct) {
   }
 }
 
-void gsw::external_product(GSWCiphertext gsw_enc, seal::Ciphertext bfv, size_t ct_poly_size,
-                           seal::Ciphertext &res_ct) {
+void gsw::external_product(GSWCiphertext const &gsw_enc, seal::Ciphertext const &bfv,
+                           size_t ct_poly_size, seal::Ciphertext &res_ct) {
 
   const auto &context_data = context->first_context_data();
   auto &parms2 = context_data->parms();
@@ -99,7 +99,7 @@ void gsw::external_product(GSWCiphertext gsw_enc, seal::Ciphertext bfv, size_t c
   }
 }
 
-void gsw::decomp_rlwe(seal::Ciphertext ct, std::vector<std::vector<uint64_t>> &output) {
+void gsw::decomp_rlwe(seal::Ciphertext const &ct, std::vector<std::vector<uint64_t>> &output) {
 
   assert(output.size() == 0);
   output.reserve(2 * l);
@@ -122,7 +122,7 @@ void gsw::decomp_rlwe(seal::Ciphertext ct, std::vector<std::vector<uint64_t>> &o
   std::vector<uint64_t> data(coeff_count * coeff_mod_count);
 
   for (int j = 0; j < ct_poly_count; j++) {
-    uint64_t *poly_ptr = ct.data(j);
+    const uint64_t *poly_ptr = ct.data(j);
 
     memcpy(data.data(), poly_ptr, coeff_count * coeff_mod_count * sizeof(uint64_t));
     rns_base->compose_array(data.data(), coeff_count, pool);
