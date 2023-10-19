@@ -123,7 +123,7 @@ PirServer::evaluate_gsw_product(std::vector<seal::Ciphertext> &result,
     }
   }
 
-  for(int j=0;j<block_size;j++){
+  for (int j = 0; j < block_size; j++) {
     gsw::cyphertext_inverse_ntt(result_vector[j]);
   }
   return result_vector;
@@ -183,13 +183,13 @@ std::vector<seal::Ciphertext> PirServer::make_query(uint32_t client_id, PirQuery
 
   auto end_time = std::chrono::high_resolution_clock::now();
   auto elapsed_time = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time);
-  std::cout<< "Query expansion time: " << elapsed_time.count() << " ms" << std::endl;
+  std::cout << "Query expansion time: " << elapsed_time.count() << " ms" << std::endl;
 
   std::vector<seal::Ciphertext> result = evaluate_first_dim_delayed_mod(query_vector);
 
   auto end_time0 = std::chrono::high_resolution_clock::now();
   auto elapsed_time0 = std::chrono::duration_cast<std::chrono::milliseconds>(end_time0 - end_time);
-  std::cout<< "First dim time: " << elapsed_time0.count() << " ms" << std::endl;
+  std::cout << "First dim time: " << elapsed_time0.count() << " ms" << std::endl;
 
   int ptr = dims_[0];
   auto l = pir_params_.get_l();
@@ -206,13 +206,14 @@ std::vector<seal::Ciphertext> PirServer::make_query(uint32_t client_id, PirQuery
     }
 
     auto end_time1 = std::chrono::high_resolution_clock::now();
-    auto elapsed_time1 = std::chrono::duration_cast<std::chrono::milliseconds>(end_time1 - end_time0);
-    std::cout<< "Dim " << i << " time: " << elapsed_time1.count() << " ms" << std::endl;
+    auto elapsed_time1 =
+        std::chrono::duration_cast<std::chrono::milliseconds>(end_time1 - end_time0);
+    std::cout << "Dim " << i << " time: " << elapsed_time1.count() << " ms" << std::endl;
 
     result = evaluate_gsw_product(result, gsw_vector);
     end_time1 = std::chrono::high_resolution_clock::now();
     elapsed_time1 = std::chrono::duration_cast<std::chrono::milliseconds>(end_time1 - end_time0);
-    std::cout<< "Dim " << i << " time: " << elapsed_time1.count() << " ms" << std::endl;
+    std::cout << "Dim " << i << " time: " << elapsed_time1.count() << " ms" << std::endl;
     end_time0 = end_time1;
   }
 

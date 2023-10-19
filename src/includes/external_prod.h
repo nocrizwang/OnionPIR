@@ -21,8 +21,8 @@ extern seal::SEALContext const *context;
   @param res_ct - output ciphertext
 */
 
-void external_product(GSWCiphertext const &gsw_enc, seal::Ciphertext const &bfv, size_t ct_poly_size,
-                      seal::Ciphertext &res_ct);
+void external_product(GSWCiphertext const &gsw_enc, seal::Ciphertext const &bfv,
+                      size_t ct_poly_size, seal::Ciphertext &res_ct);
 
 /*!
   Performs a gadget decomposition of a size 2 BFV ciphertext into 2 sets of
