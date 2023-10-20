@@ -52,7 +52,7 @@ PirQuery PirClient::generate_query(std::uint64_t entry_index) {
 
   // The number of bits is equal to the size of the first dimension
 
-  uint64_t msg_size = dims_[0] + pir_params_.get_l() * (dims_.size() - 1) * 2;
+  uint64_t msg_size = dims_[0] + pir_params_.get_l() * (dims_.size() - 1);
   uint64_t bits_per_ciphertext = 1;
 
   while (bits_per_ciphertext < msg_size)
@@ -99,16 +99,18 @@ PirQuery PirClient::generate_query(std::uint64_t entry_index) {
   }
 
   for (int i = 1; i < query_indexes.size(); i++) {
-    auto pt = query.data(0) + ptr + query_indexes[i] * l;
-    for (int j = 0; j < l; j++) {
-      for (int k = 0; k < coeff_mod_count; k++) {
-        auto pad = k * coeff_count;
-        __uint128_t mod = coeff_modulus[k].value();
-        auto coef = pow2[k][l - 1 - j] * inv[k] % mod;
-        pt[j + pad] = (pt[j + pad] + coef) % mod;
+    if (query_indexes[i] == 0) {
+      auto pt = query.data(0) + ptr;
+      for (int j = 0; j < l; j++) {
+        for (int k = 0; k < coeff_mod_count; k++) {
+          auto pad = k * coeff_count;
+          __uint128_t mod = coeff_modulus[k].value();
+          auto coef = pow2[k][l - 1 - j] * inv[k] % mod;
+          pt[j + pad] = (pt[j + pad] + coef) % mod;
+        }
       }
     }
-    ptr += dims_[i] * l;
+    ptr += l;
   }
 
   return query;

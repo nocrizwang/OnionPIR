@@ -102,29 +102,20 @@ PirServer::evaluate_first_dim_delayed_mod(std::vector<seal::Ciphertext> &selecti
   return result;
 }
 
-std::vector<seal::Ciphertext>
-PirServer::evaluate_gsw_product(std::vector<seal::Ciphertext> &result,
-                                std::vector<GSWCiphertext> &selection_vector) {
+std::vector<seal::Ciphertext> PirServer::evaluate_gsw_product(std::vector<seal::Ciphertext> &result,
+                                                              GSWCiphertext &selection_cipher) {
   std::vector<seal::Ciphertext> result_vector;
-  auto block_size = result.size() / selection_vector.size();
+  auto block_size = result.size() / 2;
 
   for (int i = 0; i < block_size; i++) {
-    // std::cout << "ORIG noise: " << decryptor_->invariant_noise_budget(result[i]) << std::endl;
-    gsw::external_product(selection_vector[0], result[i], result[0].size(), result[i]);
-    // std::cout << "PROD noise: " << decryptor_->invariant_noise_budget(result[i]) << std::endl;
+    evaluator_.sub_inplace(result[i], result[i + block_size]);
+    gsw::external_product(selection_cipher, result[i], result[0].size(), result[i]);
     result_vector.push_back(result[i]);
-  }
-
-  for (int i = 1; i < selection_vector.size(); i++) {
-    for (int j = 0; j < block_size; j++) {
-      gsw::external_product(selection_vector[i], result[j + i * block_size], result[0].size(),
-                            result[j + i * block_size]);
-      evaluator_.add_inplace(result_vector[j], result[j + i * block_size]);
-    }
   }
 
   for (int j = 0; j < block_size; j++) {
     gsw::cyphertext_inverse_ntt(result_vector[j]);
+    evaluator_.add_inplace(result_vector[j], result[j + block_size]);
   }
   return result_vector;
 }
@@ -137,7 +128,7 @@ std::vector<seal::Ciphertext> PirServer::expand_query(uint32_t client_id,
 
   // Expand ciphertext into 2^expansion_factor individual ciphertexts (number of
   // bits)
-  int exp = dims_[0] + pir_params_.get_l() * (dims_.size() - 1) * 2;
+  int exp = dims_[0] + pir_params_.get_l() * (dims_.size() - 1);
 
   int expansion_factor = 0;
 
@@ -189,31 +180,29 @@ std::vector<seal::Ciphertext> PirServer::make_query(uint32_t client_id, PirQuery
 
   auto end_time0 = std::chrono::high_resolution_clock::now();
   auto elapsed_time0 = std::chrono::duration_cast<std::chrono::milliseconds>(end_time0 - end_time);
-  std::cout << "First dim time: " << elapsed_time0.count() << " ms" << std::endl;
+  std::cout << "Dim 0 time: " << elapsed_time0.count() << " ms" << std::endl;
 
   int ptr = dims_[0];
   auto l = pir_params_.get_l();
   for (int i = 1; i < dims_.size(); i++) {
-    std::vector<GSWCiphertext> gsw_vector(dims_[i]);
+    GSWCiphertext gsw;
 
-    for (int j = 0; j < dims_[i]; j++) {
-      std::vector<seal::Ciphertext> lwe_vector;
-      for (int k = 0; k < l; k++) {
-        lwe_vector.push_back(query_vector[ptr]);
-        ptr += 1;
-      }
-      gsw::query_to_gsw(lwe_vector, client_gsw_keys_[client_id], gsw_vector[j]);
+    std::vector<seal::Ciphertext> lwe_vector;
+    for (int k = 0; k < l; k++) {
+      lwe_vector.push_back(query_vector[ptr]);
+      ptr += 1;
     }
+    gsw::query_to_gsw(lwe_vector, client_gsw_keys_[client_id], gsw);
 
     auto end_time1 = std::chrono::high_resolution_clock::now();
     auto elapsed_time1 =
         std::chrono::duration_cast<std::chrono::milliseconds>(end_time1 - end_time0);
-    std::cout << "Dim " << i << " time: " << elapsed_time1.count() << " ms" << std::endl;
+    std::cout << "Dim " << i << " GSW generation time: " << elapsed_time1.count() << " ms" << std::endl;
 
-    result = evaluate_gsw_product(result, gsw_vector);
+    result = evaluate_gsw_product(result, gsw);
     end_time1 = std::chrono::high_resolution_clock::now();
     elapsed_time1 = std::chrono::duration_cast<std::chrono::milliseconds>(end_time1 - end_time0);
-    std::cout << "Dim " << i << " time: " << elapsed_time1.count() << " ms" << std::endl;
+    std::cout << "Dim " << i << " external product time: " << elapsed_time1.count() << " ms" << std::endl;
     end_time0 = end_time1;
   }
 

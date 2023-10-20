@@ -100,7 +100,7 @@ Entry generate_entry(int id, int len) {
 }
 
 void test_pir() {
-  PirParams pir_params(1 << 10, 3, 1 << 10, 4000, 9);
+  PirParams pir_params(1 << 17, 10, 1 << 17, 4000, 9);
   pir_params.print_values();
   const int client_id = 0;
   PirServer server(pir_params);

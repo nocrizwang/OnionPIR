@@ -22,7 +22,7 @@ public:
   std::vector<seal::Ciphertext> make_query_delayed_mod(uint32_t client_id, PirQuery query);
   std::vector<seal::Ciphertext> make_query_regular_mod(uint32_t client_id, PirQuery query);
   std::vector<seal::Ciphertext> evaluate_gsw_product(std::vector<seal::Ciphertext> &result,
-                                                     std::vector<GSWCiphertext> &selection_vector);
+                                                     GSWCiphertext &selection_cipher);
   void set_client_galois_key(uint32_t client_id, seal::GaloisKeys client_key);
   void set_client_gsw_key(uint32_t client_id, GSWCiphertext &&gsw_key);
 
