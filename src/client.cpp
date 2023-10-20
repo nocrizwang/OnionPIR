@@ -39,7 +39,7 @@ GSWCiphertext PirClient::generate_gsw_from_key() {
   RNSIter secret_key_iter(sk_ntt.data(), coeff_count);
   inverse_ntt_negacyclic_harvey(secret_key_iter, coeff_mod_count, ntt_tables);
 
-  gsw::encrypt_plain_to_gsw(sk_ntt, *encryptor_, *decryptor_, gsw_enc);
+  key_gsw.encrypt_plain_to_gsw(sk_ntt, *encryptor_, *decryptor_, gsw_enc);
   return gsw_enc;
 }
 

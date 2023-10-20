@@ -3,12 +3,6 @@
 #include "utils.h"
 #include <cassert>
 
-namespace gsw {
-uint64_t l;
-uint64_t base_log2;
-seal::SEALContext const *context;
-} // namespace gsw
-
 // Here we compute a cross product between the transpose of the decomposed BFV
 // (a 2l vector of polynomials) and the GSW ciphertext (a 2lx2 matrix of
 // polynomials) to obtain a size-2 vector of polynomials, which is exactly our
@@ -16,7 +10,9 @@ seal::SEALContext const *context;
 // multiplication, assuming that both the GSWCiphertext and decomposed bfv is in
 // polynomial coefficient representation.
 
-void gsw::gsw_ntt_negacyclic_harvey(GSWCiphertext &gsw) {
+GSWEval data_gsw, key_gsw;
+
+void GSWEval::gsw_ntt_negacyclic_harvey(GSWCiphertext &gsw) {
   const auto &context_data = context->first_context_data();
   auto &parms2 = context_data->parms();
   auto &coeff_modulus = parms2.coeff_modulus();
@@ -36,7 +32,7 @@ void gsw::gsw_ntt_negacyclic_harvey(GSWCiphertext &gsw) {
   }
 }
 
-void gsw::cyphertext_inverse_ntt(seal::Ciphertext &ct) {
+void GSWEval::cyphertext_inverse_ntt(seal::Ciphertext &ct) {
   const auto &context_data = context->first_context_data();
   auto &parms2 = context_data->parms();
   auto &coeff_modulus = parms2.coeff_modulus();
@@ -52,8 +48,8 @@ void gsw::cyphertext_inverse_ntt(seal::Ciphertext &ct) {
   }
 }
 
-void gsw::external_product(GSWCiphertext const &gsw_enc, seal::Ciphertext const &bfv,
-                           size_t ct_poly_size, seal::Ciphertext &res_ct) {
+void GSWEval::external_product(GSWCiphertext const &gsw_enc, seal::Ciphertext const &bfv,
+                               size_t ct_poly_size, seal::Ciphertext &res_ct) {
 
   const auto &context_data = context->first_context_data();
   auto &parms2 = context_data->parms();
@@ -99,7 +95,7 @@ void gsw::external_product(GSWCiphertext const &gsw_enc, seal::Ciphertext const 
   }
 }
 
-void gsw::decomp_rlwe(seal::Ciphertext const &ct, std::vector<std::vector<uint64_t>> &output) {
+void GSWEval::decomp_rlwe(seal::Ciphertext const &ct, std::vector<std::vector<uint64_t>> &output) {
 
   assert(output.size() == 0);
   output.reserve(2 * l);
@@ -148,11 +144,11 @@ void gsw::decomp_rlwe(seal::Ciphertext const &ct, std::vector<std::vector<uint64
   // std::cout << "SIZE " << output.size() << std::endl;
 }
 
-void gsw::query_to_gsw(std::vector<seal::Ciphertext> query, GSWCiphertext gsw_key,
-                       GSWCiphertext &output) {
-  assert(query.size() == l);
+void GSWEval::query_to_gsw(std::vector<seal::Ciphertext> query, GSWCiphertext gsw_key,
+                           GSWCiphertext &output) {
+  int cl = query.size();
   assert(output.size() == 0);
-  output.resize(l);
+  output.resize(cl);
 
   const auto &context_data = context->get_context_data(query[0].parms_id());
   auto &parms = context_data->parms();
@@ -160,7 +156,7 @@ void gsw::query_to_gsw(std::vector<seal::Ciphertext> query, GSWCiphertext gsw_ke
   size_t coeff_count = parms.poly_modulus_degree();
   size_t coeff_mod_count = coeff_modulus.size();
 
-  for (int i = 0; i < l; i++) {
+  for (int i = 0; i < cl; i++) {
     for (int j = 0; j < coeff_count * coeff_mod_count; j++) {
       output[i].push_back(query[i].data(0)[j]);
     }
@@ -169,21 +165,21 @@ void gsw::query_to_gsw(std::vector<seal::Ciphertext> query, GSWCiphertext gsw_ke
     }
   }
   gsw_ntt_negacyclic_harvey(output);
-  output.resize(2 * l);
-  for (int i = 0; i < l; i++) {
+  output.resize(2 * cl);
+  for (int i = 0; i < cl; i++) {
     external_product(gsw_key, query[i], coeff_count, query[i]);
     for (int j = 0; j < coeff_count * coeff_mod_count; j++) {
-      output[i + l].push_back(query[i].data(0)[j]);
+      output[i + cl].push_back(query[i].data(0)[j]);
     }
     for (int j = 0; j < coeff_count * coeff_mod_count; j++) {
-      output[i + l].push_back(query[i].data(1)[j]);
+      output[i + cl].push_back(query[i].data(1)[j]);
     }
   }
 }
 
-void gsw::encrypt_plain_to_gsw(std::vector<uint64_t> const &plaintext,
-                               seal::Encryptor const &encryptor, seal::Decryptor &decryptor,
-                               GSWCiphertext &output) {
+void GSWEval::encrypt_plain_to_gsw(std::vector<uint64_t> const &plaintext,
+                                   seal::Encryptor const &encryptor, seal::Decryptor &decryptor,
+                                   GSWCiphertext &output) {
   const auto &context_data = context->first_context_data();
   auto &parms = context_data->parms();
   auto &coeff_modulus = parms.coeff_modulus();

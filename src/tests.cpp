@@ -8,7 +8,7 @@
 #include <random>
 
 void run_tests() {
-  PirParams pir_params(256, 2, 20000, 5, 15);
+  PirParams pir_params(256, 2, 20000, 5, 15, 15);
   // pir_params.print_values();
 
   std::cout << "Running tests..." << std::endl;
@@ -19,7 +19,7 @@ void run_tests() {
 }
 
 void bfv_example() {
-  PirParams pir_params(256, 2, 20000, 5, 5);
+  PirParams pir_params(256, 2, 20000, 5, 5, 5);
   auto context_ = seal::SEALContext(pir_params.get_seal_params());
   auto evaluator_ = seal::Evaluator(context_);
   auto keygen_ = seal::KeyGenerator(context_);
@@ -46,7 +46,7 @@ void bfv_example() {
 }
 
 void test_external_product() {
-  PirParams pir_params(256, 2, 20000, 5, 15);
+  PirParams pir_params(256, 2, 20000, 5, 15, 15);
   pir_params.print_values();
   auto parms = pir_params.get_seal_params();
   auto context_ = seal::SEALContext(parms);
@@ -73,14 +73,14 @@ void test_external_product() {
   std::cout << "Noise budget before: " << decryptor_.invariant_noise_budget(a_encrypted)
             << std::endl;
   GSWCiphertext b_gsw;
-  gsw::encrypt_plain_to_gsw(b, encryptor_, decryptor_, b_gsw);
+  data_gsw.encrypt_plain_to_gsw(b, encryptor_, decryptor_, b_gsw);
 
   debug(a_encrypted.data(0), "AENC[0]", coeff_count);
   debug(a_encrypted.data(1), "AENC[1]", coeff_count);
 
   for (int i = 0; i < 1; i++) {
-    gsw::external_product(b_gsw, a_encrypted, coeff_count, a_encrypted);
-    gsw::cyphertext_inverse_ntt(a_encrypted);
+    data_gsw.external_product(b_gsw, a_encrypted, coeff_count, a_encrypted);
+    data_gsw.cyphertext_inverse_ntt(a_encrypted);
     decryptor_.decrypt(a_encrypted, result);
     std::cout << "Noise budget after: " << decryptor_.invariant_noise_budget(a_encrypted)
               << std::endl;
@@ -100,7 +100,7 @@ Entry generate_entry(int id, int len) {
 }
 
 void test_pir() {
-  PirParams pir_params(1 << 17, 10, 1 << 17, 12000, 9);
+  PirParams pir_params(1 << 17, 10, 1 << 17, 12000, 6, 12);
   pir_params.print_values();
   const int client_id = 0;
   PirServer server(pir_params);

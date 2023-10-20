@@ -23,7 +23,8 @@ public:
       @param entry_size - Size of each entry in bytes
       @param l - Parameter l for GSW scheme
       */
-  PirParams(uint64_t DBSize, uint64_t ndim, uint64_t num_entries, uint64_t entry_size, uint64_t l)
+  PirParams(uint64_t DBSize, uint64_t ndim, uint64_t num_entries, uint64_t entry_size, uint64_t l,
+            uint64_t l_key)
       : DBSize_(DBSize), seal_params_(seal::EncryptionParameters(seal::scheme_type::bfv)),
         num_entries_(num_entries), entry_size_(entry_size), l_(l) {
     uint64_t first_dim = DBSize >> (ndim - 1);
@@ -59,9 +60,13 @@ public:
     }
     base_log2_ = (bits + l - 1) / l;
 
-    gsw::l = l;
-    gsw::base_log2 = base_log2_;
-    gsw::context = new seal::SEALContext(seal_params_);
+    data_gsw.l = l;
+    data_gsw.base_log2 = base_log2_;
+    data_gsw.context = new seal::SEALContext(seal_params_);
+
+    key_gsw.l = l_key;
+    key_gsw.base_log2 = (bits + l_key - 1) / l_key;
+    key_gsw.context = data_gsw.context;
   }
   seal::EncryptionParameters get_seal_params() const;
   void print_values();

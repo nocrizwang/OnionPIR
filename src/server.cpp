@@ -109,12 +109,12 @@ std::vector<seal::Ciphertext> PirServer::evaluate_gsw_product(std::vector<seal::
 
   for (int i = 0; i < block_size; i++) {
     evaluator_.sub_inplace(result[i], result[i + block_size]);
-    gsw::external_product(selection_cipher, result[i], result[0].size(), result[i]);
+    data_gsw.external_product(selection_cipher, result[i], result[0].size(), result[i]);
     result_vector.push_back(result[i]);
   }
 
   for (int j = 0; j < block_size; j++) {
-    gsw::cyphertext_inverse_ntt(result_vector[j]);
+    data_gsw.cyphertext_inverse_ntt(result_vector[j]);
     evaluator_.add_inplace(result_vector[j], result[j + block_size]);
   }
   return result_vector;
@@ -192,17 +192,19 @@ std::vector<seal::Ciphertext> PirServer::make_query(uint32_t client_id, PirQuery
       lwe_vector.push_back(query_vector[ptr]);
       ptr += 1;
     }
-    gsw::query_to_gsw(lwe_vector, client_gsw_keys_[client_id], gsw);
+    key_gsw.query_to_gsw(lwe_vector, client_gsw_keys_[client_id], gsw);
 
     auto end_time1 = std::chrono::high_resolution_clock::now();
     auto elapsed_time1 =
         std::chrono::duration_cast<std::chrono::milliseconds>(end_time1 - end_time0);
-    std::cout << "Dim " << i << " GSW generation time: " << elapsed_time1.count() << " ms" << std::endl;
+    std::cout << "Dim " << i << " GSW generation time: " << elapsed_time1.count() << " ms"
+              << std::endl;
 
     result = evaluate_gsw_product(result, gsw);
     end_time1 = std::chrono::high_resolution_clock::now();
     elapsed_time1 = std::chrono::duration_cast<std::chrono::milliseconds>(end_time1 - end_time0);
-    std::cout << "Dim " << i << " external product time: " << elapsed_time1.count() << " ms" << std::endl;
+    std::cout << "Dim " << i << " external product time: " << elapsed_time1.count() << " ms"
+              << std::endl;
     end_time0 = end_time1;
   }
 
