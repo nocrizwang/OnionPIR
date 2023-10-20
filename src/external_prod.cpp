@@ -101,8 +101,8 @@ void GSWEval::decomp_rlwe(seal::Ciphertext const &ct, std::vector<std::vector<ui
   output.reserve(2 * l);
 
   // Get parameters
-  const uint64_t base = UINT64_C(1) << base_log2;
-  const uint64_t mask = base - 1;
+  const uint128_t base = uint128_t(1) << base_log2;
+  const uint128_t mask = base - 1;
 
   const auto &context_data = context->first_context_data();
   auto &parms = context_data->parms();
@@ -191,8 +191,8 @@ void GSWEval::encrypt_plain_to_gsw(std::vector<uint64_t> const &plaintext,
 
   uint128_t pow2[coeff_mod_count][l + 1];
   for (int i = 0; i < coeff_mod_count; i++) {
-    uint64_t mod = coeff_modulus[i].value();
-    uint64_t pow = 1;
+    uint128_t mod = coeff_modulus[i].value();
+    uint128_t pow = 1;
     for (int j = 0; j <= l; j++) {
       pow2[i][j] = pow;
       pow = (pow << base_log2) % mod;

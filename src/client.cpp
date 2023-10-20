@@ -90,8 +90,8 @@ PirQuery PirClient::generate_query(std::uint64_t entry_index) {
 
   uint128_t pow2[coeff_mod_count][l + 1];
   for (int i = 0; i < coeff_mod_count; i++) {
-    uint64_t mod = coeff_modulus[i].value();
-    uint64_t pow = 1;
+    uint128_t mod = coeff_modulus[i].value();
+    uint128_t pow = 1;
     for (int j = 0; j <= l; j++) {
       pow2[i][j] = pow;
       pow = (pow << base_log2) % mod;
