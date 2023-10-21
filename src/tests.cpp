@@ -158,13 +158,13 @@ void test_pir() {
       std::cout << "Success!" << std::endl;
     } else {
       std::cout << "Failure!" << std::endl;
+
+      std::cout << "Result:\t";
+      print_entry(entry);
+      std::cout << "Data:\t";
+      print_entry(data[id]);
     }
   }
-
-  // std::cout << "Result:\t";
-  // print_entry(entry);
-  // std::cout << "Data:\t";
-  // print_entry(data[id]);
 
   // #ifdef _BENCHMARK
   //   std::cout << "Noise budget remaining: "

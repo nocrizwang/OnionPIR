@@ -41,7 +41,13 @@ public:
     }
     seal_params_.set_poly_modulus_degree(DatabaseConstants::PolyDegree);
 
-    seal_params_.set_coeff_modulus(CoeffModulus::BFVDefault(DatabaseConstants::PolyDegree));
+    if (DatabaseConstants::PolyDegree == 8192) {
+      seal_params_.set_coeff_modulus(
+          CoeffModulus::Create(DatabaseConstants::PolyDegree, {60, 60, 60}));
+    } else {
+      seal_params_.set_coeff_modulus(CoeffModulus::BFVDefault(DatabaseConstants::PolyDegree));
+    }
+
     // seal_params_.set_coeff_modulus(CoeffModulus::Create(DatabaseConstants::PolyDegree,
     // {55, 50, 50, 60}));
     // seal_params_.set_plain_modulus(

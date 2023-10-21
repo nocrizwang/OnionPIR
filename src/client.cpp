@@ -180,7 +180,7 @@ Entry PirClient::get_entry_from_plaintext(size_t entry_index, seal::Plaintext pl
   Entry result;
 
   uint128_t data_buffer = plaintext.data()[coeff_index] >> coeff_offset;
-  uint8_t data_offset = num_bits_per_coeff - coeff_offset;
+  uint128_t data_offset = num_bits_per_coeff - coeff_offset;
 
   while (result.size() < entry_size) {
     if (data_offset >= 8) {

@@ -251,11 +251,11 @@ void PirServer::set_database(std::vector<Entry> &new_db) {
 
   db_ = Database();
 
-  const uint128_t coeff_mask = (1 << (bits_per_coeff)) - 1;
+  const uint128_t coeff_mask = (uint128_t(1) << (bits_per_coeff)) - 1;
 
   for (int i = 0; i < num_plaintexts; i++) {
     uint128_t data_buffer = 0;
-    uint8_t data_offset = 0;
+    size_t data_offset = 0;
     seal::Plaintext plaintext(num_coeffs);
 
     int index = 0;
