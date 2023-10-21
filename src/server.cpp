@@ -178,6 +178,8 @@ std::vector<seal::Ciphertext> PirServer::make_query(uint32_t client_id, PirQuery
 
   std::vector<seal::Ciphertext> result = evaluate_first_dim_delayed_mod(query_vector);
 
+  std::cout << "NOISE: " << decryptor_->invariant_noise_budget(result[0]) << std::endl;
+
   auto end_time0 = std::chrono::high_resolution_clock::now();
   auto elapsed_time0 = std::chrono::duration_cast<std::chrono::milliseconds>(end_time0 - end_time);
   std::cout << "Dim 0 time: " << elapsed_time0.count() << " ms" << std::endl;
