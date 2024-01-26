@@ -241,6 +241,7 @@ void PirServer::set_database(std::vector<Entry> &new_db) {
     if (entry.size() <= pir_params_.get_entry_size()) {
       entry.resize(pir_params_.get_entry_size(), 0);
     } else {
+      // std::cout << entry.size() << std::endl;
       throw std::invalid_argument("Entry size is too large");
     }
   }

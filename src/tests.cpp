@@ -15,7 +15,8 @@ void run_tests() {
 
   // bfv_example();
   // test_external_product();
-  test_pir();
+  // test_pir();
+  test_keyword_pir();
 }
 
 void bfv_example() {
@@ -99,6 +100,20 @@ Entry generate_entry(int id, int len) {
   return entry;
 }
 
+Entry generate_entry_with_id(uint64_t id, int len) {
+  Entry entry;
+  std::mt19937 rng(id);
+
+  for (int i = 0; i < 8; i++) {
+    entry.push_back((id >> (8 * i)) % 256);
+  }
+
+  for (int i = 0; i < len - 8; i++) {
+    entry.push_back(rng() % 256);
+  }
+  return entry;
+}
+
 void test_pir() {
   PirParams pir_params(1 << 15, 8, 1 << 15, 12000, 9, 9);
   pir_params.print_values();
@@ -161,6 +176,120 @@ void test_pir() {
 
       std::cout << "Result:\t";
       print_entry(entry);
+      std::cout << "Data:\t";
+      print_entry(data[id]);
+    }
+  }
+}
+
+void test_keyword_pir() {
+  int table_size = 1 << 14;
+  PirParams pir_params(2 * table_size, 8, 2 * table_size, 12000, 9, 9);
+  pir_params.print_values();
+  const int client_id = 0;
+  PirServer server(pir_params);
+
+  int num_entries = table_size / 2;
+  std::vector<uint64_t> keywords;
+  std::vector<Entry> data(num_entries);
+
+  std::vector<uint64_t> t1(table_size), t2(table_size);
+  std::vector<Entry> cuckoo(2 * table_size);
+
+  std::mt19937_64 rng;
+  for (int i = 0; i < num_entries; i++) {
+    uint64_t keyword = rng();
+    keywords.push_back(keyword);
+    data[i] = generate_entry_with_id(keyword, pir_params.get_entry_size());
+  }
+
+  std::hash<uint64_t> hasher;
+  uint64_t seed1 = rng(), seed2 = rng();
+  table_size -= 1;
+  while (1) {
+    std::cout << "attempt hash" << std::endl;
+    for (int i = 0; i < table_size; i++) {
+      t1[i] = t2[i] = 0;
+    }
+    seed1 = rng();
+    seed2 = rng();
+    for (int i = 0; i < num_entries; i++) {
+      uint64_t x = keywords[i];
+      bool success = false;
+      for (int j = 0; j < 100; j++) {
+        if (t1[hasher(x ^ seed1) % table_size] == 0) {
+          t1[hasher(x ^ seed1) % table_size] = x;
+          success = true;
+          break;
+        }
+        std::swap(x, t1[hasher(x ^ seed1) % table_size]);
+        if (t2[hasher(x ^ seed2) % table_size] == 0) {
+          t2[hasher(x ^ seed2) % table_size] = x;
+          success = true;
+          break;
+        }
+        std::swap(x, t2[hasher(x ^ seed2) % table_size]);
+      }
+      if (!success) {
+        goto nxt;
+      }
+    }
+    break;
+  nxt:;
+  }
+
+  for (int i = 0; i < num_entries; i++) {
+    uint64_t x = keywords[i];
+    if (t1[hasher(x ^ seed1) % table_size] == x) {
+      cuckoo[hasher(x ^ seed1) % table_size] = data[i];
+    } else {
+      cuckoo[hasher(x ^ seed2) % table_size + table_size] = data[i];
+    }
+  }
+
+  for (int i = 0; i < num_entries * 2; i++) {
+    cuckoo[i].resize(pir_params.get_entry_size(), 0);
+  }
+
+  server.set_database(cuckoo);
+  std::cout << "DB set" << std::endl;
+
+  PirClient client(pir_params);
+  std::cout << "Client initialized" << std::endl;
+  server.decryptor_ = client.get_decryptor();
+  server.set_client_galois_key(client_id, client.create_galois_keys());
+  server.set_client_gsw_key(client_id, client.generate_gsw_from_key());
+
+  std::cout << "Client registered" << std::endl;
+
+  for (int i = 0; i < 10; i++) {
+    int id = rand() % num_entries;
+    auto query_id1 = hasher(keywords[id] ^ seed1) % table_size;
+    auto query_id2 = hasher(keywords[id] ^ seed2) % table_size + table_size;
+    auto query = client.generate_query(query_id1);
+    auto result = server.make_query(client_id, std::move(query));
+
+    auto query2 = client.generate_query(query_id2);
+    auto result2 = server.make_query(client_id, std::move(query2));
+
+    std::cout << "Result: " << std::endl;
+    std::cout << client.get_decryptor()->invariant_noise_budget(result[0]) << std::endl;
+
+    Entry entry1 = client.get_entry_from_plaintext(id, client.decrypt_result(result)[0]);
+    Entry entry2 = client.get_entry_from_plaintext(id, client.decrypt_result(result2)[0]);
+
+    auto end_time0 = std::chrono::high_resolution_clock::now();
+
+    if (entry1 == data[id]) {
+      std::cout << "Success with first query" << std::endl;
+    } else if (entry2 == data[id]) {
+      std::cout << "Success with second query" << std::endl;
+    } else {
+      std::cout << "Failure!" << std::endl;
+
+      std::cout << "Result:\t";
+      print_entry(entry1);
+      print_entry(entry2);
       std::cout << "Data:\t";
       print_entry(data[id]);
     }
