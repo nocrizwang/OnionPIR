@@ -100,7 +100,7 @@ Entry generate_entry(int id, int len) {
 }
 
 void test_pir() {
-  PirParams pir_params(1 << 16, 9, 1 << 16, 48128, 6, 12);
+  PirParams pir_params(1 << 15, 8, 1 << 15, 12000, 9, 9);
   pir_params.print_values();
   const int client_id = 0;
   PirServer server(pir_params);
@@ -165,52 +165,4 @@ void test_pir() {
       print_entry(data[id]);
     }
   }
-
-  // #ifdef _BENCHMARK
-  //   std::cout << "Noise budget remaining: "
-  //             << client.get_decryptor()->invariant_noise_budget(result[0]) << " bits" <<
-  //             std::endl;
-
-  //   auto query = client.generate_query(5);
-  //   auto start_time = std::chrono::high_resolution_clock::now();
-  //   server.make_query_regular_mod(client_id, query);
-  //   auto end_time = std::chrono::high_resolution_clock::now();
-  //   auto elapsed_time = std::chrono::duration_cast<std::chrono::milliseconds>(end_time -
-  //   start_time); std::cout << "No delayed mod: " << elapsed_time.count() << " ms" << std::endl;
-
-  //   start_time = std::chrono::high_resolution_clock::now();
-  //   server.make_query_delayed_mod(client_id, query);
-  //   end_time = std::chrono::high_resolution_clock::now();
-  //   elapsed_time = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time);
-  //   std::cout << "Delayed mod: " << elapsed_time.count() << " ms" << std::endl;
-
-  //   std::cout << std::endl;
-  // #endif
 }
-
-// seal::Plaintext a(coeff_count), result;
-// size_t plain_coeff_count = a.coeff_count();
-// seal::Ciphertext a_encrypted, cipher_result;
-// a[0] = 1;
-// encryptor_->encrypt_symmetric(a, a_encrypted);
-
-// gsw::external_product(gsw_enc, a_encrypted, coeff_count, a_encrypted);
-
-// decryptor_->decrypt(a_encrypted, result);
-// std::cout << "Noise budget: "
-//           << decryptor_->invariant_noise_budget(a_encrypted) << std::endl;
-// std::cout << result.to_string().substr(0, 500) << std::endl;
-// std::cout << result.nonzero_coeff_count() << std::endl;
-
-// encryptor_->encrypt_zero_symmetric(a_encrypted);
-
-// seal::util::multiply_add_plain_with_scaling_variant(
-//     a, *(context_->first_context_data()),
-//     RNSIter(a_encrypted.data(1), coeff_count));
-
-// decryptor_->decrypt(a_encrypted, result);
-// std::cout << "Noise budget: "
-//           << decryptor_->invariant_noise_budget(a_encrypted) << std::endl;
-// std::cout << result.to_string().substr(0, 500) << std::endl;
-// std::cout << result.nonzero_coeff_count() << std::endl;
-// exit(0);

@@ -43,6 +43,24 @@ GSWCiphertext PirClient::generate_gsw_from_key() {
   return gsw_enc;
 }
 
+size_t PirClient::get_database_plain_index(size_t entry_index) {
+  return entry_index / pir_params_.get_num_entries_per_plaintext();
+}
+
+std::vector<size_t> PirClient::get_query_indexes(size_t plaintext_index) {
+  std::vector<size_t> query_indexes;
+  size_t index = plaintext_index;
+  size_t size_of_remaining_dims = DBSize_;
+
+  for (auto dim_size : dims_) {
+    size_of_remaining_dims /= dim_size;
+    query_indexes.push_back(index / size_of_remaining_dims);
+    index = index % size_of_remaining_dims;
+  }
+
+  return query_indexes;
+}
+
 PirQuery PirClient::generate_query(std::uint64_t entry_index) {
 
   // Get the corresponding index of the plaintext in the database
@@ -143,24 +161,6 @@ std::vector<seal::Plaintext> PirClient::decrypt_result(std::vector<seal::Ciphert
   }
 
   return result;
-}
-
-size_t PirClient::get_database_plain_index(size_t entry_index) {
-  return entry_index / pir_params_.get_num_entries_per_plaintext();
-}
-
-std::vector<size_t> PirClient::get_query_indexes(size_t plaintext_index) {
-  std::vector<size_t> query_indexes;
-  size_t index = plaintext_index;
-  size_t size_of_remaining_dims = DBSize_;
-
-  for (auto dim_size : dims_) {
-    size_of_remaining_dims /= dim_size;
-    query_indexes.push_back(index / size_of_remaining_dims);
-    index = index % size_of_remaining_dims;
-  }
-
-  return query_indexes;
 }
 
 Entry PirClient::get_entry_from_plaintext(size_t entry_index, seal::Plaintext plaintext) {
