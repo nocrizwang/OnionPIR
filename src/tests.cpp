@@ -183,8 +183,8 @@ void test_pir() {
 }
 
 void test_keyword_pir() {
-  int table_size = 1 << 14;
-  PirParams pir_params(table_size, 7, table_size, 12000, 9, 9);
+  int table_size = 1 << 15;
+  PirParams pir_params(table_size, 8, table_size, 12000, 9, 9);
   pir_params.print_values();
   const int client_id = 0;
   PirServer server1(pir_params), server2(pir_params);
@@ -247,10 +247,10 @@ void test_keyword_pir() {
     }
   }
 
-  for (int i = 0; i < num_entries; i++) {
-    cuckoo1[i].resize(pir_params.get_entry_size(), 0);
-    cuckoo2[i].resize(pir_params.get_entry_size(), 0);
-  }
+  // for (int i = 0; i < num_entries; i++) {
+  //   cuckoo1[i].resize(pir_params.get_entry_size(), 0);
+  //   cuckoo2[i].resize(pir_params.get_entry_size(), 0);
+  // }
 
   server1.set_database(cuckoo1);
   server2.set_database(cuckoo2);
@@ -269,7 +269,7 @@ void test_keyword_pir() {
 
   std::cout << "Client registered" << std::endl;
 
-  for (int i = 0; i < 10; i++) {
+  for (int i = 0; i < 1; i++) {
     int id = rng() % num_entries;
     auto query_id1 = hasher(keywords[id] ^ seed1) % table_size;
     auto query_id2 = hasher(keywords[id] ^ seed2) % table_size;

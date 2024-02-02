@@ -4,8 +4,9 @@
 #include "external_prod.h"
 #include "pir.h"
 #include "seal/seal.h"
+#include <optional>
 
-typedef std::vector<seal::Plaintext> Database;
+typedef std::vector<std::optional<seal::Plaintext>> Database;
 
 class PirServer {
 public:

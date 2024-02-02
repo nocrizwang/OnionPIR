@@ -24,6 +24,7 @@ void PirServer::gen_data() {
   set_database(data);
 }
 
+// this function will not function if there are missing entries in the database
 std::vector<seal::Ciphertext>
 PirServer::evaluate_first_dim(std::vector<seal::Ciphertext> &selection_vector) {
   int size_of_other_dims = DBSize_ / dims_[0];
@@ -31,14 +32,14 @@ PirServer::evaluate_first_dim(std::vector<seal::Ciphertext> &selection_vector) {
 
   for (int i = 0; i < size_of_other_dims; i++) {
     seal::Ciphertext cipher_result;
-    evaluator_.multiply_plain(selection_vector[0], db_[i], cipher_result);
+    evaluator_.multiply_plain(selection_vector[0], *db_[i], cipher_result);
     result.push_back(cipher_result);
   }
 
   for (int i = 1; i < selection_vector.size(); i++) {
     for (int j = 0; j < size_of_other_dims; j++) {
       seal::Ciphertext cipher_result;
-      evaluator_.multiply_plain(selection_vector[i], db_[i * size_of_other_dims + j],
+      evaluator_.multiply_plain(selection_vector[i], *db_[i * size_of_other_dims + j],
                                 cipher_result);
       evaluator_.add_inplace(result[j], cipher_result);
     }
@@ -76,9 +77,11 @@ PirServer::evaluate_first_dim_delayed_mod(std::vector<seal::Ciphertext> &selecti
     for (int i = 0; i < dims_[0]; i++) {
       // std::cout << "i: " << i << std::endl;
       for (size_t poly_id = 0; poly_id < encrypted_ntt_size; poly_id++) {
-        utils::multiply_poly_acum(selection_vector[i].data(poly_id),
-                                  db_[col_id + i * size_of_other_dims].data(),
-                                  coeff_count * coeff_mod_count, buffer[poly_id].data());
+        if (db_[col_id + i * size_of_other_dims].has_value()) {
+          utils::multiply_poly_acum(selection_vector[i].data(poly_id),
+                                    (*db_[col_id + i * size_of_other_dims]).data(),
+                                    coeff_count * coeff_mod_count, buffer[poly_id].data());
+        }
       }
     }
     ct_acc = selection_vector[0];
@@ -238,9 +241,11 @@ void PirServer::set_database(std::vector<Entry> &new_db) {
   // Flattens data into vector of u8s and pads each entry with 0s to entry_size
   // number of bytes.
   for (Entry &entry : new_db) {
-    if (entry.size() <= pir_params_.get_entry_size()) {
+    if (entry.size() != 0 && entry.size() <= pir_params_.get_entry_size()) {
       entry.resize(pir_params_.get_entry_size(), 0);
-    } else {
+    }
+
+    if (entry.size() > pir_params_.get_entry_size()) {
       // std::cout << entry.size() << std::endl;
       throw std::invalid_argument("Entry size is too large");
     }
@@ -260,6 +265,17 @@ void PirServer::set_database(std::vector<Entry> &new_db) {
     uint128_t data_buffer = 0;
     size_t data_offset = 0;
     seal::Plaintext plaintext(num_coeffs);
+
+    int sum_size = 0;
+    for (int j = num_entries_per_plaintext * i;
+         j < std::min(num_entries_per_plaintext * (i + 1), new_db.size()); j++) {
+      sum_size += new_db[j].size();
+    }
+
+    if (sum_size == 0) {
+      db_.push_back({});
+      continue;
+    }
 
     int index = 0;
     for (int j = num_entries_per_plaintext * i;
@@ -284,7 +300,7 @@ void PirServer::set_database(std::vector<Entry> &new_db) {
 
   // Pad database with plaintext of 1s until DBSize_
   for (size_t i = db_.size(); i < DBSize_; i++) {
-    db_.push_back(seal::Plaintext("1"));
+    db_.push_back({});
   }
 
   // Process database
@@ -293,6 +309,8 @@ void PirServer::set_database(std::vector<Entry> &new_db) {
 
 void PirServer::preprocess_ntt() {
   for (auto &plaintext : db_) {
-    evaluator_.transform_to_ntt_inplace(plaintext, context_.first_parms_id());
+    if (plaintext.has_value()) {
+      evaluator_.transform_to_ntt_inplace(*plaintext, context_.first_parms_id());
+    }
   }
 }
