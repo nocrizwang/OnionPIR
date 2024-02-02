@@ -184,17 +184,17 @@ void test_pir() {
 
 void test_keyword_pir() {
   int table_size = 1 << 14;
-  PirParams pir_params(2 * table_size, 8, 2 * table_size, 12000, 9, 9);
+  PirParams pir_params(table_size, 7, table_size, 12000, 9, 9);
   pir_params.print_values();
   const int client_id = 0;
-  PirServer server(pir_params);
+  PirServer server1(pir_params), server2(pir_params);
 
-  int num_entries = table_size / 2;
+  int num_entries = table_size;
   std::vector<uint64_t> keywords;
   std::vector<Entry> data(num_entries);
 
   std::vector<uint64_t> t1(table_size), t2(table_size);
-  std::vector<Entry> cuckoo(2 * table_size);
+  std::vector<Entry> cuckoo1(table_size), cuckoo2(table_size);
 
   std::mt19937_64 rng;
   for (int i = 0; i < num_entries; i++) {
@@ -241,36 +241,43 @@ void test_keyword_pir() {
   for (int i = 0; i < num_entries; i++) {
     uint64_t x = keywords[i];
     if (t1[hasher(x ^ seed1) % table_size] == x) {
-      cuckoo[hasher(x ^ seed1) % table_size] = data[i];
+      cuckoo1[hasher(x ^ seed1) % table_size] = data[i];
     } else {
-      cuckoo[hasher(x ^ seed2) % table_size + table_size] = data[i];
+      cuckoo2[hasher(x ^ seed2) % table_size] = data[i];
     }
   }
 
-  for (int i = 0; i < num_entries * 2; i++) {
-    cuckoo[i].resize(pir_params.get_entry_size(), 0);
+  for (int i = 0; i < num_entries; i++) {
+    cuckoo1[i].resize(pir_params.get_entry_size(), 0);
+    cuckoo2[i].resize(pir_params.get_entry_size(), 0);
   }
 
-  server.set_database(cuckoo);
+  server1.set_database(cuckoo1);
+  server2.set_database(cuckoo2);
+
   std::cout << "DB set" << std::endl;
 
   PirClient client(pir_params);
   std::cout << "Client initialized" << std::endl;
-  server.decryptor_ = client.get_decryptor();
-  server.set_client_galois_key(client_id, client.create_galois_keys());
-  server.set_client_gsw_key(client_id, client.generate_gsw_from_key());
+  server1.decryptor_ = client.get_decryptor();
+  server1.set_client_galois_key(client_id, client.create_galois_keys());
+  server1.set_client_gsw_key(client_id, client.generate_gsw_from_key());
+
+  server2.decryptor_ = client.get_decryptor();
+  server2.set_client_galois_key(client_id, client.create_galois_keys());
+  server2.set_client_gsw_key(client_id, client.generate_gsw_from_key());
 
   std::cout << "Client registered" << std::endl;
 
   for (int i = 0; i < 10; i++) {
-    int id = rand() % num_entries;
+    int id = rng() % num_entries;
     auto query_id1 = hasher(keywords[id] ^ seed1) % table_size;
-    auto query_id2 = hasher(keywords[id] ^ seed2) % table_size + table_size;
+    auto query_id2 = hasher(keywords[id] ^ seed2) % table_size;
     auto query = client.generate_query(query_id1);
-    auto result = server.make_query(client_id, std::move(query));
+    auto result = server1.make_query(client_id, std::move(query));
 
     auto query2 = client.generate_query(query_id2);
-    auto result2 = server.make_query(client_id, std::move(query2));
+    auto result2 = server2.make_query(client_id, std::move(query2));
 
     std::cout << "Result: " << std::endl;
     std::cout << client.get_decryptor()->invariant_noise_budget(result[0]) << std::endl;
