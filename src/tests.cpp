@@ -15,8 +15,8 @@ void run_tests() {
 
   // bfv_example();
   // test_external_product();
-  // test_pir();
-  test_keyword_pir();
+  test_pir();
+  // test_keyword_pir();
 }
 
 void bfv_example() {
@@ -115,6 +115,13 @@ Entry generate_entry_with_id(uint64_t id, int len) {
 }
 
 void test_pir() {
+  // setting parameters for PIR scheme
+  // - Database size = 2^15
+  // - Number of dimensions = 8
+  // - Number of entries = 2^15
+  // - Entry size = 12000 bytes
+  // - l = 9  (parameter for GSW scheme)
+  // - l_key = 9 
   PirParams pir_params(1 << 15, 8, 1 << 15, 12000, 9, 9);
   pir_params.print_values();
   const int client_id = 0;
