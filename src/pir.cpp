@@ -16,7 +16,7 @@ void PirParams::print_values() {
   std::cout << "==============================================================" << std::endl;
   std::cout << "                       PIR PARAMETERS                         " << std::endl;
   std::cout << "==============================================================" << std::endl;
-  std::cout << "  num_entries_                         = " << num_entries_ << std::endl;
+  std::cout << "  num_entries_                        = " << num_entries_ << std::endl;
   std::cout << "  l_                                   = " << l_ << std::endl;
   std::cout << "  base_log2_                           = " << base_log2_ << std::endl;
   std::cout << "  entry_size_                          = " << entry_size_ << std::endl;

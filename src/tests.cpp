@@ -7,19 +7,32 @@
 #include <iostream>
 #include <random>
 
+void print_func_name(std::string func_name) {
+  std::cout << "==============================================================" << std::endl;
+  std::cout << "                       "<< func_name << "                         " << std::endl;
+  std::cout << "==============================================================" << std::endl;
+}
+
 void run_tests() {
-  PirParams pir_params(256, 2, 20000, 5, 15, 15);
+  // std::cout << "Showing default parameters" << std::endl;
+  // PirParams pir_params(1 << 16, 8, 1 << 15, 6000, 9, 9);
   // pir_params.print_values();
 
   std::cout << "Running tests..." << std::endl;
 
-  // bfv_example();
-  // test_external_product();
-  test_pir();
+  // If we compare these two examples, we do see that external product increase the noise much slower than BFV x BFV.
+  bfv_example();
+  test_external_product();
+  // test_pir();
   // test_keyword_pir();
+
+  std::cout << "End of tests" << std::endl;
 }
 
+// This is a BFV x BFV example
 void bfv_example() {
+  print_func_name(__FUNCTION__);
+
   PirParams pir_params(256, 2, 20000, 5, 5, 5);
   auto context_ = seal::SEALContext(pir_params.get_seal_params());
   auto evaluator_ = seal::Evaluator(context_);
@@ -36,21 +49,33 @@ void bfv_example() {
   seal::Plaintext a(poly_degree), b(poly_degree), result;
   a[0] = 1;
   a[1] = 9;
+
   b[0] = 3;
   b[1] = 6;
+
+  DEBUG_PRINT("Vector a: " << a.to_string());
+  DEBUG_PRINT("Vector b: " << b.to_string());
+
   seal::Ciphertext a_encrypted, b_encrypted, cipher_result;
   encryptor_->encrypt_symmetric(a, a_encrypted);
   encryptor_->encrypt_symmetric(b, b_encrypted);
+  
+  std::cout << "Noise budget before: " << decryptor_->invariant_noise_budget(a_encrypted)
+            << std::endl;
+
   evaluator_.multiply(a_encrypted, b_encrypted, cipher_result);
   decryptor_->decrypt(cipher_result, result);
-  std::cout << result.to_string() << std::endl;
+  std::cout << "Noise budget after: " << decryptor_->invariant_noise_budget(cipher_result) << std::endl;
+  std::cout << "BFV x BFV result: " << result.to_string() << std::endl;
 }
 
+// This is a BFV x GSW example
 void test_external_product() {
+  print_func_name(__FUNCTION__);
   PirParams pir_params(256, 2, 20000, 5, 15, 15);
   pir_params.print_values();
-  auto parms = pir_params.get_seal_params();
-  auto context_ = seal::SEALContext(parms);
+  auto parms = pir_params.get_seal_params();    // This parameter is set to be: seal::scheme_type::bfv
+  auto context_ = seal::SEALContext(parms);   // Then this context_ knows that it is using BFV scheme
   auto evaluator_ = seal::Evaluator(context_);
   auto keygen_ = seal::KeyGenerator(context_);
   auto secret_key_ = keygen_.secret_key();
@@ -58,17 +83,41 @@ void test_external_product() {
   auto decryptor_ = seal::Decryptor(context_, secret_key_);
   size_t coeff_count = parms.poly_modulus_degree();
   uint64_t poly_degree = pir_params.get_seal_params().poly_modulus_degree();
+
+  DEBUG_PRINT("poly_degree: " << poly_degree);
+  // the test data vector a and results are both in BFV scheme.
   seal::Plaintext a(poly_degree), result;
   size_t plain_coeff_count = a.coeff_count();
-  seal::Ciphertext a_encrypted(context_), cipher_result(context_);
+  seal::Ciphertext a_encrypted(context_), cipher_result(context_);    // encrypted "a" will be stored here.
   auto &context_data = *context_.first_context_data();
+
+  // vector b
   std::vector<uint64_t> b(poly_degree);
 
+  // vector a is in the context of BFV scheme. 
+  // 0, 1, 2, 4 are coeff_index of the term x^i, 
+  // the index of the coefficient in the plaintext polynomial
   a[0] = 123;
   a[1] = 221;
   a[2] = 69;
-  b[0] = 1;
+  a[4] = 23;
 
+  DEBUG_PRINT("Vector a: " << a.to_string());
+
+  // vector b is in the context of GSW scheme.
+
+  // b[0] = 1;
+  b[0] = 2;
+  b[2] = 5;
+  
+  // print b
+  std::string b_result = "Vector b: ";
+  for (int i = 0; i < 5; i++) {
+    b_result += std::to_string(b[i]) + " ";
+  }
+  DEBUG_PRINT(b_result);
+  
+  // Since a_encrypted is in a context of BFV scheme, the following function encrypts "a" using BFV scheme.
   encryptor_.encrypt_symmetric(a, a_encrypted);
 
   std::cout << "Noise budget before: " << decryptor_.invariant_noise_budget(a_encrypted)
@@ -79,16 +128,19 @@ void test_external_product() {
   debug(a_encrypted.data(0), "AENC[0]", coeff_count);
   debug(a_encrypted.data(1), "AENC[1]", coeff_count);
 
-  for (int i = 0; i < 1; i++) {
+  size_t mult_rounds = 3;
+
+  for (int i = 0; i < mult_rounds; i++) {
     data_gsw.external_product(b_gsw, a_encrypted, coeff_count, a_encrypted);
     data_gsw.cyphertext_inverse_ntt(a_encrypted);
     decryptor_.decrypt(a_encrypted, result);
     std::cout << "Noise budget after: " << decryptor_.invariant_noise_budget(a_encrypted)
               << std::endl;
+  
+  // output decrypted result
+  std::cout << "External product result: " << result.to_string() << std::endl;
+  // std::cout << "Result non-zero coeff count: " << result.nonzero_coeff_count() << std::endl;
   }
-
-  std::cout << result.to_string() << std::endl;
-  std::cout << result.nonzero_coeff_count() << std::endl;
 }
 
 Entry generate_entry(int id, int len) {
@@ -114,7 +166,10 @@ Entry generate_entry_with_id(uint64_t id, int len) {
   return entry;
 }
 
+// Testing Onion PIR scheme 
 void test_pir() {
+  print_func_name(__FUNCTION__);
+  
   // setting parameters for PIR scheme
   // - Database size = 2^15
   // - Number of dimensions = 8

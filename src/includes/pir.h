@@ -6,6 +6,10 @@
 #include <stdexcept>
 #include <vector>
 
+
+#define DEBUG_PRINT(s) std::cout << s << std::endl;  // print for debug
+// #define DEBUG_PRINT(s) ; // do nothing
+
 using namespace seal::util;
 using namespace seal;
 
@@ -27,6 +31,8 @@ public:
             uint64_t l_key)
       : DBSize_(DBSize), seal_params_(seal::EncryptionParameters(seal::scheme_type::bfv)),
         num_entries_(num_entries), entry_size_(entry_size), l_(l) {
+    
+    // Since all dimensions are fixed to 2 except the first one. We calculate the first dimension here.
     uint64_t first_dim = DBSize >> (ndim - 1);
     if (first_dim < 128) {
       throw std::invalid_argument("Size of first dimension is too small");
@@ -35,9 +41,11 @@ public:
       throw std::invalid_argument("Size of database is not a power of 2");
     }
 
-    dims_.push_back(first_dim);
+    // First dimension must be a power of 2.
+    // After experiment, when first_dim is 128, the performance is the best.
+    dims_.push_back(first_dim); // ?can we use emplace_back here?
     for (int i = 1; i < ndim; i++) {
-      dims_.push_back(2);
+      dims_.push_back(2); // ! All other dimensions are fixed to 2. But why not 4 here? according to paper?
     }
     seal_params_.set_poly_modulus_degree(DatabaseConstants::PolyDegree);
 
@@ -55,24 +63,37 @@ public:
     //     DatabaseConstants::PlaintextModBits));
     seal_params_.set_plain_modulus(DatabaseConstants::PlaintextMod);
 
+    // ! Question: What is the "plaintext" here? Why it is possible to have multiple entries in a plaintext?
+    // DEBUG_PRINT("get_num_entries_per_plaintext() = " << get_num_entries_per_plaintext());
+
+    // The first part calculates the number of entries that this database can hold in total. (limits)
+    // num_entries is the number of useful entries that the user can use in the database.
     if (DBSize_ * get_num_entries_per_plaintext() < num_entries) {
       throw std::invalid_argument("Number of entries in database is too large");
     }
 
+
+    // ! what is this "modulus" and "bits" used for? Meaning?
     auto modulus = seal_params_.coeff_modulus();
     int bits = 0;
     for (int i = 0; i < modulus.size() - 1; i++) {
       bits += modulus[i].bit_count();
     }
+
+    // ! what is this used for? It seems that later in client.cpp, PirClient::generate_query(std::uint64_t entry_index)
+    // ! uses this in the "pow". But if this base_log2_ means "log_2 {B}", then pow << base_log2_ means pow * B.
     base_log2_ = (bits + l - 1) / l;
 
+    // Set up parameters for GSW in external_prod.h
     data_gsw.l = l;
     data_gsw.base_log2 = base_log2_;
     data_gsw.context = new seal::SEALContext(seal_params_);
 
+    // If l_key == l, then these two are exactly the same.
     key_gsw.l = l_key;
-    key_gsw.base_log2 = (bits + l_key - 1) / l_key;
+    key_gsw.base_log2 = (bits + l_key - 1) / l_key;   // same calculation method 
     key_gsw.context = data_gsw.context;
+    
   }
   seal::EncryptionParameters get_seal_params() const;
   void print_values();
