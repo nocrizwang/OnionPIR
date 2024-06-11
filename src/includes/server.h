@@ -15,9 +15,11 @@ public:
     Replaces the database with random data
   */
   void gen_data();
-  /*!
-    Sets the database to a new database
-  */
+
+  /**
+   * @brief Sets the server database using the provided vector of entries
+   * @param new_db 
+   */
   void set_database(std::vector<Entry> &new_db);
   std::vector<seal::Ciphertext> make_query(uint32_t client_id, PirQuery &&query);
   std::vector<seal::Ciphertext> make_query_delayed_mod(uint32_t client_id, PirQuery query);

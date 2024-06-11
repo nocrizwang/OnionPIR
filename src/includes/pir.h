@@ -63,7 +63,8 @@ public:
     //     DatabaseConstants::PlaintextModBits));
     seal_params_.set_plain_modulus(DatabaseConstants::PlaintextMod);
 
-    // ! Question: What is the "plaintext" here? Why it is possible to have multiple entries in a plaintext?
+    // ? Why it is possible to have multiple entries in a plaintext?
+    // Plaintext definition in: seal::Plaintext (plaintext.h).
     // DEBUG_PRINT("get_num_entries_per_plaintext() = " << get_num_entries_per_plaintext());
 
     // The first part calculates the number of entries that this database can hold in total. (limits)
@@ -80,7 +81,7 @@ public:
       bits += modulus[i].bit_count();
     }
 
-    // ! what is this used for? It seems that later in client.cpp, PirClient::generate_query(std::uint64_t entry_index)
+    // ? What is this used for? It seems that later in client.cpp, PirClient::generate_query(std::uint64_t entry_index)
     // ! uses this in the "pow". But if this base_log2_ means "log_2 {B}", then pow << base_log2_ means pow * B.
     base_log2_ = (bits + l - 1) / l;
 
@@ -102,6 +103,8 @@ public:
   // Calculates the number of entries that each plaintext can contain, aligning
   // the end of an entry to the end of a plaintext.
   size_t get_num_entries_per_plaintext() const;
+  // ? What is the "coeff" here? Why it is possible to have multiple bits in a coeff?
+  // ?  For me it seems that this is the number of bits required to represent a single coefficient of the polynomial corresponds to the plaintext.
   size_t get_num_bits_per_coeff() const;
   // Calculates the number of bytes of data each plaintext contains, after
   // aligning the end of an entry to the end of a plaintext.

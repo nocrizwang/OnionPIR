@@ -21,9 +21,9 @@ void run_tests() {
   std::cout << "Running tests..." << std::endl;
 
   // If we compare these two examples, we do see that external product increase the noise much slower than BFV x BFV.
-  bfv_example();
-  test_external_product();
-  // test_pir();
+  // bfv_example();
+  // test_external_product();
+  test_pir();
   // test_keyword_pir();
 
   std::cout << "End of tests" << std::endl;
@@ -143,23 +143,53 @@ void test_external_product() {
   }
 }
 
+/**
+ * @brief Given an entry id and the length of the entry, generate a random entry using random number generator.
+ * 
+ * @param id entry id
+ * @param len length(size) of the entry. Each entry is a vector of bytes.
+ * @return Entry 
+ */
 Entry generate_entry(int id, int len) {
   Entry entry;
-  std::mt19937 rng(id);
+  entry.reserve(len);   // ? I think this will help reduce the number of reallocations.
+  // rng here is a pseudo-random number generator: https://en.cppreference.com/w/cpp/numeric/random/mersenne_twister_engine
+  // According to the notes in: https://en.cppreference.com/w/cpp/numeric/random/rand, 
+  // rand() is not recommended for serious random-number generation needs. Therefore we need this mt19937.
+  // Other methods are recommended in: 
+  std::mt19937 rng(id); 
   for (int i = 0; i < len; i++) {
-    entry.push_back(rng() % 256);
+    entry.push_back(rng() % 256); // 256 is the maximum value of a byte
+  }
+
+  // sample entry print. Should look like: 
+  // 254, 109, 126, 66, 220, 98, 230, 17, 83, 106, 123,
+  if (id == 100) {
+    DEBUG_PRINT("First 10 bytes of the " + std::to_string(id) + "th entry: ");
+    print_entry(entry);
+    DEBUG_PRINT("Entry size: " << entry.size());  
   }
   return entry;
 }
 
+/**
+ * @brief Generate an entry with a specific id. The first 8 bytes of the entry is the id itself.
+ * 
+ * @param id id of the entry
+ * @param len length of the entry
+ * @return Entry 
+ */
 Entry generate_entry_with_id(uint64_t id, int len) {
   Entry entry;
+  entry.reserve(len);   // ? I think this will help reduce the number of reallocations.
   std::mt19937 rng(id);
 
+  // push the entry id into the first 8 bytes of the entry
   for (int i = 0; i < 8; i++) {
-    entry.push_back((id >> (8 * i)) % 256);
+    entry.push_back((id >> (8 * i)) % 256); // shift 8 bits to the right each time
   }
 
+  // generate the rest of the entry using random numbers
   for (int i = 0; i < len - 8; i++) {
     entry.push_back(rng() % 256);
   }
@@ -176,11 +206,11 @@ void test_pir() {
   // - Number of entries = 2^15
   // - Entry size = 12000 bytes
   // - l = 9  (parameter for GSW scheme)
-  // - l_key = 9 
+  // - l_key = 9 (Not sure for now)
   PirParams pir_params(1 << 15, 8, 1 << 15, 12000, 9, 9);
   pir_params.print_values();
   const int client_id = 0;
-  PirServer server(pir_params);
+  PirServer server(pir_params); // Initialize the server with the parameters
   // server.gen_data();
 
 #ifdef _DEBUG
@@ -190,8 +220,11 @@ void test_pir() {
   std::cout << " ===== Benchmark build =====" << std::endl;
 #endif
 
+  // Data to be stored in the database.
   std::vector<Entry> data(pir_params.get_num_entries());
 
+  // Generate random data for each entry in the database. 
+  // The entry id will be used as the seed for the random number generator.
   for (int i = 0; i < pir_params.get_num_entries(); i++) {
     data[i] = generate_entry(i, pir_params.get_entry_size());
   }
@@ -207,7 +240,7 @@ void test_pir() {
 
   std::cout << "Client registered" << std::endl;
 
-  for (int i = 0; i < 10; i++) {
+  for (int i = 0; i < 1; i++) {
     int id = rand() % pir_params.get_num_entries();
 
     auto start_time0 = std::chrono::high_resolution_clock::now();
