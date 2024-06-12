@@ -152,7 +152,9 @@ void test_external_product() {
  */
 Entry generate_entry(int id, int len) {
   Entry entry;
-  entry.reserve(len);   // ? I think this will help reduce the number of reallocations.
+  // ? I think reserving enough space will help reduce the number of reallocations.
+  // My test shows that it improves the performance by about 40%. 17000ms -> 10000ms
+  entry.reserve(len);   
   // rng here is a pseudo-random number generator: https://en.cppreference.com/w/cpp/numeric/random/mersenne_twister_engine
   // According to the notes in: https://en.cppreference.com/w/cpp/numeric/random/rand, 
   // rand() is not recommended for serious random-number generation needs. Therefore we need this mt19937.
@@ -164,11 +166,13 @@ Entry generate_entry(int id, int len) {
 
   // sample entry print. Should look like: 
   // 254, 109, 126, 66, 220, 98, 230, 17, 83, 106, 123,
+  /*
   if (id == 100) {
     DEBUG_PRINT("First 10 bytes of the " + std::to_string(id) + "th entry: ");
     print_entry(entry);
     DEBUG_PRINT("Entry size: " << entry.size());  
   }
+  */
   return entry;
 }
 

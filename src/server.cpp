@@ -250,7 +250,7 @@ void PirServer::set_database(std::vector<Entry> &new_db) {
 
     if (entry.size() > pir_params_.get_entry_size()) {
       // std::cout << entry.size() << std::endl;
-      throw std::invalid_argument("Entry size is too large");
+        std::invalid_argument("Entry size is too large");
     }
   }
 
@@ -266,24 +266,22 @@ void PirServer::set_database(std::vector<Entry> &new_db) {
   db_ = Database(); // create an empty database
   db_.reserve(DBSize_); // reserve space for DBSize_ elements as it will always be padded below.
 
-  const uint128_t coeff_mask = (uint128_t(1) << (bits_per_coeff)) - 1;
+  const uint128_t coeff_mask = (uint128_t(1) << (bits_per_coeff)) - 1;  // bits_per_coeff many 1s
 
   DEBUG_PRINT("num_plaintexts = " << num_plaintexts);
 
+  // ! Optimization: the commented code snippet can be replaced using a multiplication.
+  // We can do this because the size of each entry is fixed to pir_params_.get_entry_size().
+  // I.e. new_db[j].size() == pir_params_.get_entry_size() for all j.
+  // Also, there is no need to check the upper limit (new_db.size()) as the integer division rounds down when we calculate num_plaintexts.
+
+  // sum_size: the total size of each plaintext in bytes.
+  int sum_size = num_entries_per_plaintext * pir_params_.get_entry_size();
+
+
   // Now we handle plaintexts one by one.
   for (int i = 0; i < num_plaintexts; i++) {
-    uint128_t data_buffer = 0;
-    size_t data_offset = 0;
     seal::Plaintext plaintext(num_coeffs);
-
-    // ! Optimization: the commented code snippet can be replaced using a multiplication.
-    // We can do this because the size of each entry is fixed to pir_params_.get_entry_size().
-    // I.e. new_db[j].size() == pir_params_.get_entry_size() for all j.
-    // Also, there is no need to check the upper limit (new_db.size()) as the integer division rounds down when we calculate num_plaintexts.
-
-    // sum_size: the total size of the plaintext in bytes.
-    int sum_size = num_entries_per_plaintext * pir_params_.get_entry_size();
-
 
 #ifdef _DEBUG
     // Loop through the entries that corresponds to the current plaintext. 
@@ -295,6 +293,8 @@ void PirServer::set_database(std::vector<Entry> &new_db) {
       additive_sum_size += new_db[j].size();
     }
     assert(additive_sum_size == sum_size); // sanity check for different method of calculating sum_size
+    assert(num_entries_per_plaintext * num_plaintexts <= new_db.size()); // sanity check for the upper limit of the loop
+    assert(sum_size != 0);
 #endif
 
     if (sum_size == 0) {
@@ -302,13 +302,22 @@ void PirServer::set_database(std::vector<Entry> &new_db) {
       continue;
     }
 
-    // TODO: read this
-    int index = 0;
+    // bits_per_coeff is 24 in test_pir() parameters
+    // num_coeff is 4096 in test_pir() parameters
+
+    int index = 0;  // index for the current coefficient to be filled
+    uint128_t data_buffer = 0;
+    size_t data_offset = 0;
+    // For each entry in the current plaintext
     for (int j = num_entries_per_plaintext * i;
          j < std::min(num_entries_per_plaintext * (i + 1), new_db.size()); j++) {
+      // For each byte in this entry
       for (int k = 0; k < pir_params_.get_entry_size(); k++) {
+        // data_buffer temporarily stores the data from entry bytes
         data_buffer += uint128_t(new_db[j][k]) << data_offset;
         data_offset += 8;
+        // When we have enough data to fill a coefficient
+        // We will one by one fill the coefficients with the data_buffer.
         while (data_offset >= bits_per_coeff) {
           plaintext[index] = data_buffer & coeff_mask;
           index++;
@@ -317,6 +326,7 @@ void PirServer::set_database(std::vector<Entry> &new_db) {
         }
       }
     }
+    // add remaining data to a new coefficient
     if (data_offset > 0) {
       plaintext[index] = data_buffer & coeff_mask;
       index++;
@@ -325,7 +335,7 @@ void PirServer::set_database(std::vector<Entry> &new_db) {
   }
 
   // Pad database with plaintext of 1s until DBSize_
-  // ? Why {} is equal to 1?
+  // ? Why {} is equal to 1? Guess: {} will be treated as 1 during the multiplication of polynomial.
   // Since we have reserved enough spaces for DBSize_ elements, this won't result in reallocations
   for (size_t i = db_.size(); i < DBSize_; i++) {
     db_.push_back({});
@@ -333,6 +343,8 @@ void PirServer::set_database(std::vector<Entry> &new_db) {
 
   // Process database
   preprocess_ntt();
+
+  // TODO: tutorial on Number Theoretic Transform (NTT): https://youtu.be/Pct3rS4Y0IA?si=25VrCwBJuBjtHqoN
 }
 
 void PirServer::preprocess_ntt() {
