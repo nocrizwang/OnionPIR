@@ -268,8 +268,6 @@ void PirServer::set_database(std::vector<Entry> &new_db) {
 
   const uint128_t coeff_mask = (uint128_t(1) << (bits_per_coeff)) - 1;  // bits_per_coeff many 1s
 
-  DEBUG_PRINT("num_plaintexts = " << num_plaintexts);
-
   // ! Optimization: the commented code snippet can be replaced using a multiplication.
   // We can do this because the size of each entry is fixed to pir_params_.get_entry_size().
   // I.e. new_db[j].size() == pir_params_.get_entry_size() for all j.
@@ -301,9 +299,6 @@ void PirServer::set_database(std::vector<Entry> &new_db) {
       db_.push_back({});  // push an empty std::optional<seal::Plaintext>. {} is equivalent to std::nullopt
       continue;
     }
-
-    // bits_per_coeff is 24 in test_pir() parameters
-    // num_coeff is 4096 in test_pir() parameters
 
     int index = 0;  // index for the current coefficient to be filled
     uint128_t data_buffer = 0;
