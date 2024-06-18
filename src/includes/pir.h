@@ -70,6 +70,9 @@ public:
     // The first part calculates the number of entries that this database can hold in total. (limits)
     // num_entries is the number of useful entries that the user can use in the database.
     if (DBSize_ * get_num_entries_per_plaintext() < num_entries) {
+      DEBUG_PRINT("DBSize_ = " << DBSize_);
+      DEBUG_PRINT("get_num_entries_per_plaintext() = " << get_num_entries_per_plaintext());
+      DEBUG_PRINT("num_entries = " << num_entries);
       throw std::invalid_argument("Number of entries in database is too large");
     }
 

@@ -211,7 +211,7 @@ void test_pir() {
   // - Entry size = 12000 bytes
   // - l = 9  (parameter for GSW scheme)
   // - l_key = 9 (Not sure for now)
-  PirParams pir_params(1 << 15, 8, 1 << 15, 12000, 9, 9);
+  PirParams pir_params(1 << 18, 12, 1 << 18, 1<<13, 9, 9);
   pir_params.print_values();
   const int client_id = 0;
   PirServer server(pir_params); // Initialize the server with the parameters

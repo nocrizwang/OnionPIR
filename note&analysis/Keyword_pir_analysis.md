@@ -1,4 +1,4 @@
-# A list of important variables in ChalametPIR
+### A list of important variables in ChalametPIR
 
 - $\mathrm{KV}$: key-value map. 
 - $\mathcal{M} \subseteq \mathcal{K} \times \mathcal{X}$: is the raw key-value map.
@@ -70,33 +70,78 @@ Suppose we have a key-value map $\mathcal{M} \subseteq \mathcal{K} \times \mathc
 
 
 
-### Analysis
+### Analysis & Comparison
 
 #### About the role of KV filter in ChalametPIR
 
 We see that the map is transformed into a BFF and stored in the server. The client only needs to hash each keyword using $\mathrm{H(k)}$ to get a few indices, which are later used to query the LWEPIR. In the ChalametPIR scheme, which uses BinaryFuse filter, the number of hash function is $k \in \{3, 4\}$. 
 
-In this scheme, Key-value filter is not tightly bound to LWEPIR schemes. But do note that Chalamet PIR modified the LWEPIR.query() function so that the input is not a single index, but a vector $\pmb{f}$ that contains 3 or 4 ones. The resulting $\mathrm{q}$ is still a single vector. They send this query vector to the server to perform the matrix-vector multiplication, which returns a encoded version of the $\mathrm{hash(k) || x}$. (If need to dive into this, check the source code of ChalametPIR. Specifically, `generate_query` in their `api.rs`. )
+In this scheme, Key-value filter is not tightly bound to LWEPIR schemes. But do note that Chalamet PIR modified the LWEPIR.query() function so that the input is not a single index, but a vector $\pmb{f}$ that contains 3 or 4 ones. The resulting $\mathrm{q}$ is still a single vector. They send this query vector to the server to perform the matrix-vector multiplication, which returns a encoded version of the $\mathrm{hash(k) || x}$​​. (If need to dive into this, check the source code of ChalametPIR. Specifically, `generate_query` in their `api.rs`. )
+
+Thought: we can indeed use this in OnionPIR. 
 
 #### Naive variants of ChalametPIR
 
 If we do not use matrix-vector multiplication, a naive way to solve this is to run any kind of PIR scheme $k$ many times. Each time, we get one row from the server. Let the client locally perform the addition to recover $\mathrm{hash(k) || x}$. 
 
-#### 
+#### Using Cuckoo Hashing
+
+Naive thought: say the database uses cuckoo hashing to store the key-value pairs. The client can then use a similar method to generate a few indices to query. The only problem is that the space utilization is bad. For $m$ enties, we need to take $2m$ space for the cuckoo hashing table.
+
+#### CGN98
+
+As mentioned in ChalametPIR paper, this work showed a way of transforming any PIR scheme to a KWPIR scheme using $\log N$ queries. ==What is $N$?==
+
+#### Constant-weight Codewords
+
+Client sends a HE keyword. The server computes each bit of the vector using an equality operator — represented as an indicator function that is set to 1 when it returns true, and 0 otherwise. Then, perform an inner product. This has very high computation. 
+
+
+
+#### Why don't we store key-value pairs directly?
+
+Coz we can't make it secure... right? Can we make a normal `std::unordered_map<std::string, int>` secure? 
 
 
 
 
 
+---
+
+TODO: 
+
+https://eprint.iacr.org/2019/1483
+
+Learn: 
+
+- modulus switching
+- Hamming weight
+
+https://www.usenix.org/conference/usenixsecurity23/presentation/patel
 
 
 
+Can we combine SparsePIR and Binary Fuse Filter? 
+
+Is SparsePIR better than using cuckoo hashing? 
+
+SparsePIR do have some drawbacks.
 
 
 
+Spend a little time verifying if this BFF.setupFilter
 
 
 
+New Stateful PIR
+
+Evaluate how to do keyword support.
+
+
+
+---
+
+Variable length
 
 
 
