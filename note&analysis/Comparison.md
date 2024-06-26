@@ -25,8 +25,42 @@ DB: database in the server.
 $N$: the number of entries in the database. This is not $m$.
 
 ---
+## Choice of filters
+
+Paper: [Binary Fuse Filters: Fast and Smaller Than Xor Filters](https://arxiv.org/pdf/2201.01174).
+
+### Cuckoo hashing
+
+- Storage space
+  - range from 30 to 40% of the theoretial lower bound
+- Query(computation) time
+  - almost the same as 4-wise BF
+- Construction time
+  - Close to XOR filter almost times compared to BF
+
+### Binary fuse filter
+
+- Storage space
+  - 3-wise BF: 13% of the theoretial lower bound
+  - 4-wise BF: 8% of the theoretial lower bound
+- Query(computation) time
+  - 3-wise BF: Slightly better than 4-wise BF, almost the same as XOR filter
+  - 4-wise BF: Slightly worse than 3-wise BF, almost the same as Cuckoo hashing
+- Construction time
+  - 3-wise BF: Slightly worse than 4-wise BF
+  - 4-wise BF: Slightly better than 3-wise BF
+
+
+Notes:
+- BF filter are generally much superior than cuckoo hashing except the query time is very close to 4-wise BF.
+- 3-wise BF takes up more storage to trade for faster query response, compared to 4-wise BF.
+
+TODO: Check out [Ribbon filter](https://arxiv.org/pdf/2103.02515). It is also better than Cuckoo hashing and XOR filter. In this paper it is claimed that binary fuse is better than Ribbon. Is it so? Is it suitable to our scheme (stateful and stateless)? 
+
 
 Let's start by investigating how they realize the keyword PIR feature. 
+
+---
 
 ### Cuckoo Hashing based on Onion
 
@@ -59,8 +93,6 @@ This scheme works for all index-based PIR schemes. Both stateful and stateless. 
 
 Twice slower than the normal index-based PIR scheme. 
 
-
-
 ### SparsePIR based on Onion 
 
 TODO:
@@ -85,8 +117,6 @@ $$
 - Server storage
 - Server computation
 - Ability to support multiple clients
-
-
 
 
 
