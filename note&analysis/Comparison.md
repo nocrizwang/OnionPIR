@@ -7,6 +7,7 @@ The goal is to compare three methods for supporting keyword feature in PIR: Key-
 - Client storage
 - Client computation
 - Online communication
+- Download size
 - Offline communication (if any)
 - Server storage
 - Server computation
@@ -33,10 +34,30 @@ Paper: [Binary Fuse Filters: Fast and Smaller Than Xor Filters](https://arxiv.or
 
 - Storage space
   - range from 30 to 40% of the theoretial lower bound
+  
 - Query(computation) time
   - almost the same as 4-wise BF
+  
 - Construction time
   - Close to XOR filter almost times compared to BF
+  
+- Failure probability
+
+  - We have a detailed analysis in [this paper](https://eprint.iacr.org/2018/579), which basically suggesting that using 3 hash function, instead of 2, has smaller failure probability during construction. 
+
+  - Summary: let $N = çm$ be the size of the hash table. When $ç \geq 8$ and when we use 2 hash functions, the hashing failure is $2^{-\lambda}$, where
+$$
+\lambda=(1+0.65 s)\left(3.3 \log _2(ç)+\log _2(N)-0.8\right)
+$$
+
+
+
+
+  - The catch for 2 hash functions case: if we set $ç = 2$, $\lambda$ converges to 1 quickly. So, half of the time the construction of the database fails. But we can try a few more times. The failure rate is geometrically decreasing.
+
+  - 
+
+  - In 3 hash functions case, if $ç = 2$, we find $\lambda \approx 100$.
 
 ### Binary fuse filter
 
@@ -66,18 +87,18 @@ Let's start by investigating how they realize the keyword PIR feature.
 
 The paper [Communication--Computation Trade-offs in PIR](https://eprint.iacr.org/2019/1483) brought up a very simple method for realizing the keyword support. 
 
-Server initialize 2 cuckoo hash table defined by 2 hash functions $\mathrm{H}_1, \mathrm{H}_2$ and insert all the key-value pairs. This introduces $N = 2m$. Suppose 
+Server initialize $\kappa$ cuckoo hash table defined by $\kappa$ hash functions $\mathrm{H}_1, \mathrm{H}_2$ and insert all the key-value pairs. This introduces $N = \kappa m$. $\kappa$ can be 2 or 3. We have analysis in the cuckoo hashing section.
 
-After the database is configured, the client can use $\mathrm{H_1, H_2}$ to calculate the hash for the two positions. This is fast and easy. Then client initiates two PIR queries to get the two indices.
+After the database is configured, the client can use $\mathrm{H_1, \ldots, H_\kappa}$ to calculate the hash for the two positions. This is fast and easy. Then client initiates two PIR queries to get the two indices.
 
 - Client storage
-  - $O(1)$ for $\mathrm{H_1, H_2}$ + storage for PIR scheme. This is small
+  - $O(1)$ for hash functions + storage for PIR scheme. This is small
 - Client computation.
-  - $O(1)$ for computing $\mathrm{H_1, H_2}$ + computation for PIR scheme.
+  - $O(1)$ for computing hashs + computation for PIR scheme.
 - Online communication
-  - 2 PIR queries.
+  - 2 or 3 PIR queries.
 - Download size
-  - (?)
+  - None.
 - Offline communication (if any)
   - None if in stateless PIR scheme.
 - Server storage
@@ -93,11 +114,19 @@ This scheme works for all index-based PIR schemes. Both stateful and stateless. 
 
 #### Disadvantage: 
 
-Twice slower than the normal index-based PIR scheme. 
+2 or 3 $\times$ slower than the normal index-based PIR scheme. 
 
 ### SparsePIR based on Onion 
 
-TODO:
+
+
+
+
+
+
+
+
+
 
 ### ChalametPIR Using Key-value Filter
 
@@ -111,30 +140,35 @@ $$
 $$
 
 - Client storage
-  - k hash funcitons and (?)
+  - $O(1)$ for k hash funcitons (and client state if in stateful scheme).
 - Client computation
   - negligible query ($O(n)$) and parsing ($O(1)$) time < 1 ms
 - Online communication
-  - one PIR query
-  - ~1 second
+  - One PIR query if use dot product in LWE scheme. This is ~1 second in [Frodo](https://eprint.iacr.org/2022/981) for 1 million 1KB elements. Note that the query size here is $O(N)$. The data in table 3 in ChalametPIR, the query size is about 12 ~ 18$\times$ larger than SpiralSparsePIR, about 1~ 4$\times$ larger than OnionSparsePIR. 
+  - If we don't combine all indices in one query, then 4 queries on $N = 1.08m$ database or 3 queries on $N=1.13m$ database. 
 - Download size
-  - almost the same as Frodo PIR
+  - Almost the same as Frodo PIR. Client must download the entire hint.
   - $O(1)$ ~6MB
 - Offline communication (if any)
+  - The client downloads the hint from server.
+
 - Server storage
-  - $N = ç m = 1.08m$ when $k=4$
+  - Raw database has $N = ç m = 1.08m$ many enties when $k=4$. 
+  - Nothing more if no server preprocessing.
 - Server computation
   - Slightly slower than the Frodo PIR scheme.
   - O(m) 10e6 seconds for 218 × 1 kB DB
 - Ability to support multiple clients
+  - According to FrodoPIR, it is good at scaling.
 
 
 
 
+### Thoughts: 
 
+If we simply use PIR as a black box, then 
 
-
-
+Is additive homomorphic encryption fast? 
 
 
 
