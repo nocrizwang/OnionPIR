@@ -118,13 +118,44 @@ This scheme works for all index-based PIR schemes. Both stateful and stateless. 
 
 ### SparsePIR based on Onion 
 
+We now focus on the original SparsePIR, not SparsePIR$^g$, not SparsePIR$^c$. So the scheme is based on a partition-based PIR. We have analysis in another file. 
 
+In here, $d_1 \in \set{128, 512, 1024}, \varepsilon = 0.38, b \approx 10000$.
 
+- Client storage
+  - $O(1)$ hash function key / seed.
+- Client computation
+  - $O(d_1) < 1024$ hash computation, which is very small. But requires preparing query vector for the PIR scheme of $b$ entries. Also not too bad.
+- Online communication
+  - Query: $O(d_1)$ + a small PIR query.
+  - Response: equal to the size of one PIR response on database of size $m$. This is because they also need to touch on every entries.
+- Download size
+  - None.
+- Offline communication (if any)
+  - None.
+- Server storage
+  - $(1+\varepsilon)m = (1 + 0.38)m = 1.38m$.
+- Server computation
+  - It requires minutes for preprocessing the database. $O(n)$.
+  - For the online runtime, SparsePIR requires many FHE dot product $\pmb{\mathrm{v_1}} \cdot \pmb{\mathrm{e}}_i, \forall i \in [b]$. I would like to learn about the experimental runtime for this part.
+  - Then, the server compute for a PIR query on $b$ many results we get from the previous step.
+- Ability to support multiple clients
+  - This is also good enough.
 
+#### Advantage: 
 
+The response size is the same as a normal index-based PIR scheme (Onion and Spiral here).
 
+#### Disadvantage:
 
+According to the data provided in their paper, we discover that they do not have any other advantages. The catch of this scheme is that computing the LWE dot product $\pmb{\mathrm{v_1}} \cdot \pmb{\mathrm{e}}_i, \forall i \in [b]$ is very slow. Say, when comparing the CH-PIR with SparsePIR, the cuckoo hashing method computes 2 PIR queries, but it is still faster than SparsePIR, which only computes a single PIR query on a 128~1024$\times$ smaller "database" (do notice that the entry size is 128~1024 larger, don't know how to compare this as it involves LWE scheme). So, CH with a faster PIR scheme will outperform Sparse.
 
+<center>
+  <figure>
+    <img src=" https://raw.githubusercontent.com/helloboyxxx/images-for-notes/master/uPic/image-20240627121734575.png " style="width:60%;" />
+    <figcaption>  </figcaption>
+  </figure>
+</center>
 
 
 
@@ -166,9 +197,23 @@ $$
 
 ### Thoughts: 
 
-If we simply use PIR as a black box, then 
+If we simply use PIR as a black box, the best we can do so far is to use cuckoo hashing.
 
-Is additive homomorphic encryption fast? 
+
+
+
+
+Is additive homomorphic encryption fast? If so, then using KV filter to query for 3 entries and use additive homomorphic encryption to add the results together. This could be faster than Sparse while maintaining the response size the same as Sparse.
+
+
+
+
+
+
+
+
+
+
 
 
 

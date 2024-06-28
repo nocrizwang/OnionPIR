@@ -51,7 +51,7 @@ Due to partition, we can now solve for $\pmb{\mathrm{M}}_i \cdot \pmb{\mathrm{e}
 
 #### Query: 
 
-The query vector has size $d_1$. It is sent to server, and the server does $\pmb{\mathrm{v}}_1 \cdot \pmb{\mathrm{e}}_i$ for all $i \in [b]$. This is $O(b)$ many LWE matrix vector multiplication. 
+The query vector has size $d_1$. It is sent to server, and the server does $\pmb{\mathrm{v}}_1 \cdot \pmb{\mathrm{e}}_i$ for all $i \in [b]$. This is $O(b)$ many LWE vector dot product. 
 
 Then the client perform a PIR to query the $i$ result $\pmb{\mathrm{v}}_1 \cdot \pmb{\mathrm{e}}_i$. This part, they use recursion to reduce the PIR computation.
 
