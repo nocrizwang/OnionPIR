@@ -54,9 +54,6 @@ $$
 
 
   - The catch for 2 hash functions case: if we set $ç = 2$, $\lambda$ converges to 1 quickly. So, half of the time the construction of the database fails. But we can try a few more times. The failure rate is geometrically decreasing.
-
-  - 
-
   - In 3 hash functions case, if $ç = 2$, we find $\lambda \approx 100$.
 
 ### Binary fuse filter
@@ -78,10 +75,9 @@ Notes:
 
 TODO: Check out [Ribbon filter](https://arxiv.org/pdf/2103.02515). It is also better than Cuckoo hashing and XOR filter. In this paper it is claimed that binary fuse is better than Ribbon. Is it so? Is it suitable to our scheme (stateful and stateless)? 
 
+---
 
 Let's start by investigating how they realize the keyword PIR feature. 
-
----
 
 ### Cuckoo Hashing based on Onion
 
@@ -96,7 +92,7 @@ After the database is configured, the client can use $\mathrm{H_1, \ldots, H_\ka
 - Client computation.
   - $O(1)$ for computing hashs + computation for PIR scheme.
 - Online communication
-  - 2 or 3 PIR queries.
+  - $\kappa$ PIR queries.
 - Download size
   - None.
 - Offline communication (if any)
@@ -135,7 +131,7 @@ In here, $d_1 \in \set{128, 512, 1024}, \varepsilon = 0.38, b \approx 10000$.
   - None.
 - Server storage
   - $(1+\varepsilon)m = (1 + 0.38)m = 1.38m$.
-- Server computation
+- ==Server computation==
   - It requires minutes for preprocessing the database. $O(n)$.
   - For the online runtime, SparsePIR requires many FHE dot product $\pmb{\mathrm{v_1}} \cdot \pmb{\mathrm{e}}_i, \forall i \in [b]$. I would like to learn about the experimental runtime for this part.
   - Then, the server compute for a PIR query on $b$ many results we get from the previous step.
@@ -148,14 +144,15 @@ The response size is the same as a normal index-based PIR scheme (Onion and Spir
 
 #### Disadvantage:
 
-According to the data provided in their paper, we discover that they do not have any other advantages. The catch of this scheme is that computing the LWE dot product $\pmb{\mathrm{v_1}} \cdot \pmb{\mathrm{e}}_i, \forall i \in [b]$ is very slow. Say, when comparing the CH-PIR with SparsePIR, the cuckoo hashing method computes 2 PIR queries, but it is still faster than SparsePIR, which only computes a single PIR query on a 128~1024$\times$ smaller "database" (do notice that the entry size is 128~1024 larger, don't know how to compare this as it involves LWE scheme). So, CH with a faster PIR scheme will outperform Sparse.
+According to the data provided in their paper, we discover that they do not have any other advantages. The catch of this scheme is that computing the LWE dot product $\pmb{\mathrm{v_1}} \cdot \pmb{\mathrm{e}}_i, \forall i \in [b]$ is very slow. Say, when comparing the CH-PIR with SparsePIR, the cuckoo hashing method computes 2 PIR queries, but it is still faster than SparsePIR, which only computes a single PIR query on a 128~1024$\times$ smaller "database" (do notice that the entry size is 128~1024 larger, don't know how to compare this as it involves LWE scheme). So, CH with a faster PIR scheme will likely outperform Sparse.
 
 <center>
   <figure>
-    <img src=" https://raw.githubusercontent.com/helloboyxxx/images-for-notes/master/uPic/image-20240627121734575.png " style="width:60%;" />
+    <img src=" https://raw.githubusercontent.com/helloboyxxx/images-for-notes/master/uPic/image-20240627121734575.png " style="width:80%;" />
     <figcaption>  </figcaption>
   </figure>
 </center>
+
 
 
 
@@ -182,28 +179,33 @@ $$
   - $O(1)$ ~6MB
 - Offline communication (if any)
   - The client downloads the hint from server.
-
 - Server storage
   - Raw database has $N = ç m = 1.08m$ many enties when $k=4$. 
   - Nothing more if no server preprocessing.
 - Server computation
+  - This involves a LWE matrix vector multiplication.
   - Slightly slower than the Frodo PIR scheme.
   - O(m) 10e6 seconds for 218 × 1 kB DB
+
 - Ability to support multiple clients
   - According to FrodoPIR, it is good at scaling.
 
-
+---
 
 
 ### Thoughts: 
 
-If we simply use PIR as a black box, the best we can do so far is to use cuckoo hashing.
+If we simply use PIR as a black box, the best we can do so far is to use key-value filter with 3 hash functions, and possibly add the results together on the server side to reduce response size. This assume that server computation is linear to the size of the database. Otherwise, cuckoo hashing should be better (less request size / fewer rounds). Example: in hint-based stateful PIR, both methods are solid. the difference is that in cuckoo hashing, server must return two partitions instead of one. If using key-value filter, consider false-positive rate and also the larger request size.
+
+The way Sparse realize keyword support naturally combined with linear combination, which invovles in dot product. It is unlikely to be optimized anymore.
 
 
 
 
 
-Is additive homomorphic encryption fast? If so, then using KV filter to query for 3 entries and use additive homomorphic encryption to add the results together. This could be faster than Sparse while maintaining the response size the same as Sparse.
+
+
+Is additive homomorphic encryption fast? If so, then using KV filter to query for 3 or 4 entries and use additive homomorphic encryption to add the results together. This could be faster than Sparse while maintaining the response size the same as Sparse.
 
 
 
