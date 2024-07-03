@@ -61,14 +61,30 @@ Then the client perform a PIR to query the $i$ result $\pmb{\mathrm{v}}_1 \cdot 
 
 If we have the code, we can try to break the online computation to two parts: 
 
-1. Computation time required for all $\pmb{\mathrm{v}}_1 \cdot \pmb{\mathrm{e}}_i$. This time is inevitable as this is the core of this method. 
-2. The computation time required for getting the $i$-th result. At this point, the "database" has become $b$ entries. 
+(1) Computation time required for all $\pmb{\mathrm{v}}_1 \cdot \pmb{\mathrm{e}}_i$. This time is inevitable as this is the core of this method. 
+(2) The computation time required for getting the $i$-th result. At this point, the "database" has become $b$ entries. 
+
+My guess is that (1) takes more than 50% time.
 
 
 
 
+### The Notion of Dot Product
+
+<center>
+  <figure>
+    <img src=" https://raw.githubusercontent.com/helloboyxxx/images-for-notes/master/uPic/image-20240703085445728.png " style="width:70%;" />
+    <figcaption>  </figcaption>
+  </figure>
+</center>
+
+<center>
+  <figure>
+    <img src=" https://raw.githubusercontent.com/helloboyxxx/images-for-notes/master/uPic/image-20240703085541400.png " style="width:70%;" />
+    <figcaption>  </figcaption>
+  </figure>
+</center>
 
 
-
-
+Hence, the first dimension is handeled in the same way as other dimensions. The only difference is the Hamming weight.
 
