@@ -8,28 +8,27 @@
 #include <random>
 
 void print_func_name(std::string func_name) {
-  std::cout << "==============================================================" << std::endl;
   std::cout << "                       "<< func_name << "                         " << std::endl;
-  std::cout << "==============================================================" << std::endl;
 }
 
 void run_tests() {
-  // std::cout << "Showing default parameters" << std::endl;
-  // PirParams pir_params(1 << 16, 8, 1 << 15, 6000, 9, 9);
-  // pir_params.print_values();
+  DEBUG_PRINT("Running tests");
+  DEBUG_PRINT("==============================================================");
 
-  std::cout << "Running tests..." << std::endl;
-
-  // If we compare these two examples, we do see that external product increase the noise much slower than BFV x BFV.
+  // If we compare the following two examples, we do see that external product increase the noise much slower than BFV x BFV.
   // bfv_example();
   // test_external_product();
+
   test_pir();
   // test_keyword_pir();
 
-  std::cout << "End of tests" << std::endl;
+  DEBUG_PRINT("==============================================================");
+  DEBUG_PRINT("Tests finished");
 }
 
-// This is a BFV x BFV example
+/**
+ * @brief This is a BFV x BFV example. The coefficients in example vectors and the result are in hex.
+ */
 void bfv_example() {
   print_func_name(__FUNCTION__);
 
@@ -42,6 +41,7 @@ void bfv_example() {
   auto decryptor_ = new seal::Decryptor(context_, secret_key_);
 
   uint64_t poly_degree = pir_params.get_seal_params().poly_modulus_degree();
+  DEBUG_PRINT("poly_degree: " << poly_degree);
   std::cout << "Size f: " << context_.key_context_data()->parms().coeff_modulus().size()
             << std::endl;
   std::cout << "Size f: " << context_.first_context_data()->parms().coeff_modulus().size()
@@ -211,7 +211,7 @@ void test_pir() {
   // - Entry size = 12000 bytes
   // - l = 9  (parameter for GSW scheme)
   // - l_key = 9 (Not sure for now)
-  PirParams pir_params(1 << 18, 12, 1 << 18, 1<<13, 9, 9);
+  PirParams pir_params(1 << 15, 8, 1 << 15, 12000, 9, 9);
   pir_params.print_values();
   const int client_id = 0;
   PirServer server(pir_params); // Initialize the server with the parameters
@@ -224,6 +224,8 @@ void test_pir() {
   std::cout << " ===== Benchmark build =====" << std::endl;
 #endif
 
+
+  DEBUG_PRINT("Initializing server...");
   // Data to be stored in the database.
   std::vector<Entry> data(pir_params.get_num_entries());
 
@@ -232,42 +234,36 @@ void test_pir() {
   for (int i = 0; i < pir_params.get_num_entries(); i++) {
     data[i] = generate_entry(i, pir_params.get_entry_size());
   }
-
   server.set_database(data);
-  std::cout << "DB set" << std::endl;
 
+
+  DEBUG_PRINT("Initializing client...");
   PirClient client(pir_params);
-  std::cout << "Client initialized" << std::endl;
   server.decryptor_ = client.get_decryptor();
   server.set_client_galois_key(client_id, client.create_galois_keys());
   server.set_client_gsw_key(client_id, client.generate_gsw_from_key());
 
-  std::cout << "Client registered" << std::endl;
-
+  // Run the query process many times.
   for (int i = 0; i < 1; i++) {
     int id = rand() % pir_params.get_num_entries();
 
-    auto start_time0 = std::chrono::high_resolution_clock::now();
+    // === Client start generating query ===
+    auto c_start_time = CURR_TIME;  // client start time for the query
     auto query = client.generate_query(id);
-    auto start_time = std::chrono::high_resolution_clock::now();
+    
+    auto s_start_time = CURR_TIME;  // server start time for processing the query
     auto result = server.make_query(client_id, std::move(query));
-    auto end_time = std::chrono::high_resolution_clock::now();
-    auto elapsed_time =
-        std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time);
-    std::cout << "Server Time: " << elapsed_time.count() << " ms" << std::endl;
-
-    std::cout << "Result: " << std::endl;
-    std::cout << client.get_decryptor()->invariant_noise_budget(result[0]) << std::endl;
+    auto s_end_time = CURR_TIME;
+    
+    // client gets result from the server and decrypts it
     auto decrypted_result = client.decrypt_result(result);
-
-    // std::cout << "Decrypted result: " << decrypted_result[0].to_string() << std::endl;
     Entry entry = client.get_entry_from_plaintext(id, decrypted_result[0]);
-    auto end_time0 = std::chrono::high_resolution_clock::now();
+    auto c_end_time = CURR_TIME;
+    
+    DEBUG_PRINT("Server Time: " << TIME_DIFF(s_start_time, s_end_time) << " ms");
+    DEBUG_PRINT("Client Time: " << TIME_DIFF(c_start_time, c_end_time) - TIME_DIFF(s_start_time, s_end_time) << " ms");
+    DEBUG_PRINT("Noise budget left: " << client.get_decryptor()->invariant_noise_budget(result[0]));
 
-    auto elapsed_time0 =
-        std::chrono::duration_cast<std::chrono::milliseconds>(end_time0 - start_time0);
-    std::cout << "Client Time: " << elapsed_time0.count() - elapsed_time.count() << " ms"
-              << std::endl;
     if (entry == data[id]) {
       std::cout << "Success!" << std::endl;
     } else {
@@ -384,7 +380,7 @@ void test_keyword_pir() {
     Entry entry1 = client.get_entry_from_plaintext(id, client.decrypt_result(result)[0]);
     Entry entry2 = client.get_entry_from_plaintext(id, client.decrypt_result(result2)[0]);
 
-    auto end_time0 = std::chrono::high_resolution_clock::now();
+    auto end_time0 = CURR_TIME;
 
     if (entry1 == data[id]) {
       std::cout << "Success with first query" << std::endl;

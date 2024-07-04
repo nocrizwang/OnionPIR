@@ -174,22 +174,19 @@ void PirServer::set_client_gsw_key(uint32_t client_id, GSWCiphertext &&gsw_key) 
 
 std::vector<seal::Ciphertext> PirServer::make_query(uint32_t client_id, PirQuery &&query) {
 
-  auto start_time = std::chrono::high_resolution_clock::now();
+  // Query expansion
+  auto exp_qry_start = CURR_TIME;
   std::vector<seal::Ciphertext> query_vector = expand_query(client_id, query);
-
-  auto end_time = std::chrono::high_resolution_clock::now();
-  auto elapsed_time = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time);
-  std::cout << "Query expansion time: " << elapsed_time.count() << " ms" << std::endl;
+  auto exp_qry_end = CURR_TIME;
+  DEBUG_PRINT("Query expansion time: " << TIME_DIFF(exp_qry_start, exp_qry_end) << " ms");
 
   std::vector<seal::Ciphertext> result = evaluate_first_dim_delayed_mod(query_vector);
+  // DEBUG_PRINT("NOISE budget: " << decryptor_->invariant_noise_budget(result[0]));
 
-  std::cout << "NOISE: " << decryptor_->invariant_noise_budget(result[0]) << std::endl;
-
-  auto end_time0 = std::chrono::high_resolution_clock::now();
-  auto elapsed_time0 = std::chrono::duration_cast<std::chrono::milliseconds>(end_time0 - end_time);
-  std::cout << "Dim 0 time: " << elapsed_time0.count() << " ms" << std::endl;
+  std::cout << "Dim 0 time: " << TIME_DIFF(exp_qry_end, CURR_TIME) << " ms" << std::endl;
 
   int ptr = dims_[0];
+  DEBUG_PRINT("ptr: " << ptr);
   auto l = pir_params_.get_l();
   for (int i = 1; i < dims_.size(); i++) {
     GSWCiphertext gsw;
@@ -199,20 +196,16 @@ std::vector<seal::Ciphertext> PirServer::make_query(uint32_t client_id, PirQuery
       lwe_vector.push_back(query_vector[ptr]);
       ptr += 1;
     }
-    key_gsw.query_to_gsw(lwe_vector, client_gsw_keys_[client_id], gsw);
 
-    auto end_time1 = std::chrono::high_resolution_clock::now();
-    auto elapsed_time1 =
-        std::chrono::duration_cast<std::chrono::milliseconds>(end_time1 - end_time0);
-    std::cout << "Dim " << i << " GSW generation time: " << elapsed_time1.count() << " ms"
-              << std::endl;
+    auto gsw_gen_start = CURR_TIME;
+    key_gsw.query_to_gsw(lwe_vector, client_gsw_keys_[client_id], gsw);
+    auto gsw_gen_end = CURR_TIME;
 
     result = evaluate_gsw_product(result, gsw);
-    end_time1 = std::chrono::high_resolution_clock::now();
-    elapsed_time1 = std::chrono::duration_cast<std::chrono::milliseconds>(end_time1 - end_time0);
-    std::cout << "Dim " << i << " external product time: " << elapsed_time1.count() << " ms"
-              << std::endl;
-    end_time0 = end_time1;
+    auto ext_prod_end = CURR_TIME;  // external product time
+
+    DEBUG_PRINT("Dim " << i << " GSW generation time: \t" << TIME_DIFF(gsw_gen_start, gsw_gen_end) << "\tms");
+    DEBUG_PRINT("Dim " << i << " external product time: \t" << TIME_DIFF(gsw_gen_end, ext_prod_end) << "\tms\n");
   }
 
   evaluator_.mod_switch_to_next_inplace(result[0]);

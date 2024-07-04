@@ -21,6 +21,8 @@ public:
    * @param new_db 
    */
   void set_database(std::vector<Entry> &new_db);
+
+  // Given the client id and a client query, returns the retrieved encrypted result.
   std::vector<seal::Ciphertext> make_query(uint32_t client_id, PirQuery &&query);
   std::vector<seal::Ciphertext> make_query_delayed_mod(uint32_t client_id, PirQuery query);
   std::vector<seal::Ciphertext> make_query_regular_mod(uint32_t client_id, PirQuery query);

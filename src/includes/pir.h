@@ -6,17 +6,24 @@
 #include <stdexcept>
 #include <vector>
 
+// ================== MACROs ==================
+#define CURR_TIME std::chrono::high_resolution_clock::now()
+#define TIME_DIFF(start, end) std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count()
 
 #define DEBUG_PRINT(s) std::cout << s << std::endl;  // print for debug
+
 // #define DEBUG_PRINT(s) ; // do nothing
 
+// ================== NAMESPACES  ==================
 using namespace seal::util;
 using namespace seal;
 
+// ================== TYPE DEFINITIONS ==================
 // Each entry is a vector of bytes
 typedef std::vector<uint8_t> Entry;
 typedef Ciphertext PirQuery;
 
+// ================== CLASS DEFINITIONS ==================
 class PirParams {
 public:
   /*!
@@ -43,9 +50,9 @@ public:
 
     // First dimension must be a power of 2.
     // After experiment, when first_dim is 128, the performance is the best.
-    dims_.push_back(first_dim); // ?can we use emplace_back here?
+    dims_.push_back(first_dim); 
     for (int i = 1; i < ndim; i++) {
-      dims_.push_back(2); // ! All other dimensions are fixed to 2. But why not 4 here? according to paper?
+      dims_.push_back(2); // ! CHANGED 2 is better than 4 as we can do a trick to reduce the request queries. This is different from the paper.
     }
     seal_params_.set_poly_modulus_degree(DatabaseConstants::PolyDegree);
 
@@ -56,18 +63,13 @@ public:
       seal_params_.set_coeff_modulus(CoeffModulus::BFVDefault(DatabaseConstants::PolyDegree));
     }
 
-    // seal_params_.set_coeff_modulus(CoeffModulus::Create(DatabaseConstants::PolyDegree,
-    // {55, 50, 50, 60}));
-    // seal_params_.set_plain_modulus(
-    //     PlainModulus::Batching(DatabaseConstants::PolyDegree,
-    //     DatabaseConstants::PlaintextModBits));
     seal_params_.set_plain_modulus(DatabaseConstants::PlaintextMod);
 
     // ? Why it is possible to have multiple entries in a plaintext?
     // Plaintext definition in: seal::Plaintext (plaintext.h).
     // DEBUG_PRINT("get_num_entries_per_plaintext() = " << get_num_entries_per_plaintext());
 
-    // The first part calculates the number of entries that this database can hold in total. (limits)
+    // The first part (mult) calculates the number of entries that this database can hold in total. (limits)
     // num_entries is the number of useful entries that the user can use in the database.
     if (DBSize_ * get_num_entries_per_plaintext() < num_entries) {
       DEBUG_PRINT("DBSize_ = " << DBSize_);
@@ -85,7 +87,7 @@ public:
     }
 
     // ? What is this used for? It seems that later in client.cpp, PirClient::generate_query(std::uint64_t entry_index)
-    // ! uses this in the "pow". But if this base_log2_ means "log_2 {B}", then pow << base_log2_ means pow * B.
+    // ! uses this in the "pow". But if this base_log2_ means "$\log_2 {B}$", then pow << base_log2_ means pow * B ?
     base_log2_ = (bits + l - 1) / l;
 
     // Set up parameters for GSW in external_prod.h
