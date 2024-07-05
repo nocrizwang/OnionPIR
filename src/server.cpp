@@ -26,29 +26,32 @@ void PirServer::gen_data() {
   set_database(data);
 }
 
+// Computes a dot product between the selection vector and the database for the
+// first dimension. This function is used when the modulus switching is not
+// delayed. The selection vector should be transformed to ntt.
 // this function will not function if there are missing entries in the database
 std::vector<seal::Ciphertext>
 PirServer::evaluate_first_dim(std::vector<seal::Ciphertext> &selection_vector) {
-  int size_of_other_dims = DBSize_ / dims_[0];
+  int size_of_other_dims = DBSize_ / dims_[0];  // number of entries in the other dimensions
   std::vector<seal::Ciphertext> result;
 
   for (int i = 0; i < size_of_other_dims; i++) {
     seal::Ciphertext cipher_result;
-    evaluator_.multiply_plain(selection_vector[0], *db_[i], cipher_result);
-    result.push_back(cipher_result);
+    evaluator_.multiply_plain(selection_vector[0], *db_[i], cipher_result); // multiply the first selection vector with the first entry in the database
+    result.push_back(cipher_result);  // store the result in the result vector
   }
 
   for (int i = 1; i < selection_vector.size(); i++) {
     for (int j = 0; j < size_of_other_dims; j++) {
       seal::Ciphertext cipher_result;
       evaluator_.multiply_plain(selection_vector[i], *db_[i * size_of_other_dims + j],
-                                cipher_result);
-      evaluator_.add_inplace(result[j], cipher_result);
+                                cipher_result); // multiply the ith selection vector with the ith entry in the database
+      evaluator_.add_inplace(result[j], cipher_result); // add the result to the previous result
     }
   }
 
   for (auto &ct : result) {
-    evaluator_.transform_from_ntt_inplace(ct);
+    evaluator_.transform_from_ntt_inplace(ct);  // transform
   }
 
   return result;
@@ -59,7 +62,7 @@ PirServer::evaluate_first_dim(std::vector<seal::Ciphertext> &selection_vector) {
 // be transformed to ntt.
 std::vector<seal::Ciphertext>
 PirServer::evaluate_first_dim_delayed_mod(std::vector<seal::Ciphertext> &selection_vector) {
-  int size_of_other_dims = DBSize_ / dims_[0];
+  int size_of_other_dims = DBSize_ / dims_[0];  // number of entries in the other dimensions
   std::vector<seal::Ciphertext> result;
   auto seal_params = context_.get_context_data(selection_vector[0].parms_id())->parms();
   // auto seal_params =  context_.key_context_data()->parms();
@@ -70,7 +73,7 @@ PirServer::evaluate_first_dim_delayed_mod(std::vector<seal::Ciphertext> &selecti
   seal::Ciphertext ct_acc;
 
   for (int i = 0; i < dims_[0]; i++) {
-    evaluator_.transform_to_ntt_inplace(selection_vector[i]);
+    evaluator_.transform_to_ntt_inplace(selection_vector[i]); // transform the selection vector to ntt
   }
 
   for (int col_id = 0; col_id < size_of_other_dims; ++col_id) {
@@ -79,28 +82,28 @@ PirServer::evaluate_first_dim_delayed_mod(std::vector<seal::Ciphertext> &selecti
     for (int i = 0; i < dims_[0]; i++) {
       // std::cout << "i: " << i << std::endl;
       for (size_t poly_id = 0; poly_id < encrypted_ntt_size; poly_id++) {
-        if (db_[col_id + i * size_of_other_dims].has_value()) {
+        if (db_[col_id + i * size_of_other_dims].has_value()) { // if the entry is not empty
           utils::multiply_poly_acum(selection_vector[i].data(poly_id),
                                     (*db_[col_id + i * size_of_other_dims]).data(),
-                                    coeff_count * coeff_mod_count, buffer[poly_id].data());
+                                    coeff_count * coeff_mod_count, buffer[poly_id].data()); 
         }
       }
     }
     ct_acc = selection_vector[0];
     for (size_t poly_id = 0; poly_id < encrypted_ntt_size; poly_id++) {
-      auto ct_ptr = ct_acc.data(poly_id);
-      auto pt_ptr = buffer[poly_id];
+      auto ct_ptr = ct_acc.data(poly_id); // pointer to the data of the ciphertext
+      auto pt_ptr = buffer[poly_id];  // pointer to the buffer data
       for (int mod_id = 0; mod_id < coeff_mod_count; mod_id++) {
         auto mod_idx = (mod_id * coeff_count);
 
         for (int coeff_id = 0; coeff_id < coeff_count; coeff_id++) {
           pt_ptr[coeff_id + mod_idx] =
-              pt_ptr[coeff_id + mod_idx] % static_cast<__uint128_t>(coeff_modulus[mod_id].value());
-          ct_ptr[coeff_id + mod_idx] = static_cast<uint64_t>(pt_ptr[coeff_id + mod_idx]);
+              pt_ptr[coeff_id + mod_idx] % static_cast<__uint128_t>(coeff_modulus[mod_id].value()); // mod operation
+          ct_ptr[coeff_id + mod_idx] = static_cast<uint64_t>(pt_ptr[coeff_id + mod_idx]); // store the result in the ciphertext
         }
       }
     }
-    evaluator_.transform_from_ntt_inplace(ct_acc);
+    evaluator_.transform_from_ntt_inplace(ct_acc);  // transform
     result.push_back(ct_acc);
   }
 
