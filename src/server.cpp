@@ -191,15 +191,13 @@ std::vector<seal::Ciphertext> PirServer::make_query(uint32_t client_id, PirQuery
   for (int i = 1; i < dims_.size(); i++) {
     auto gsw_gen_start = CURR_TIME;
     
-    // Extracting the current GSW query vector from the expanded query
     // ? Can we batch this operation outside the loop?
-    std::vector<seal::Ciphertext> lwe_vector;
+    std::vector<seal::Ciphertext> lwe_vector; // BFV ciphertext, size l * 2. This vector will be reconstructed as a single RGSW ciphertext.
     for (int k = 0; k < l; k++) {
       lwe_vector.push_back(query_vector[ptr]);
       ptr += 1;
     }
-
-    // ? Converting the BFV ciphertext to GSW ciphertext
+    // Converting the BFV ciphertext to GSW ciphertext
     GSWCiphertext gsw;
     key_gsw.query_to_gsw(lwe_vector, client_gsw_keys_[client_id], gsw);
 

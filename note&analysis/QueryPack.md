@@ -6,8 +6,7 @@ In the pseudocode, each $b_{i, j}$ is consists of $f$ many "values". For the fir
 
 The **question** here is: each "parameter" here is a plaintext polynomial in $R \mod t$. How can we encode this many polynomials in a single BFV ciphertext? A single BFV ciphertext is made up of two polynomials in $R \mod t$. 
 
-Quote from OnionPIR: "In our implementation, each ciphertext has 𝑛 = 4096 plaintext slots, so we pack all these
-plaintexts into a single BFV ciphertext". What is the meaning of this? 
+Quote from OnionPIR: "In our implementation, each ciphertext has 𝑛 = 4096 plaintext slots, so we pack all these plaintexts into a single BFV ciphertext". What is the meaning of this? 
 
 
 
@@ -40,10 +39,10 @@ $$
 
 ### Questions: 
 
-If we increase the size of the ciphertext, we leave more room for noise. But that has an increase of $F = \frac{2 \log q}{ \log t}$, the ciphertext expansion factor. 
+- If we increase the size of the ciphertext, we leave more room for noise. But that has an increase of $F = \frac{2 \log q}{ \log t}$, the ciphertext expansion factor. 
 
-
-
+- In the code, we have `seal_params_.poly_modulus_degree() = 4096`. What does this mean? 
+- The trick for reducing query vectors by half. How is it done in details? The client only need to provide one bit information for the server, but how can the server generate the normal query obliviously?
 
 
 

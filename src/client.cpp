@@ -82,7 +82,8 @@ PirQuery PirClient::generate_query(std::uint64_t entry_index) {
   // Algorithm 1 from the OnionPIR Paper
   // We set the corresponding coefficient to the inverse so the value of the
   // expanded ciphertext will be 1
-  uint64_t inverse = 0, plain_modulus = params_.plain_modulus().value();
+  uint64_t inverse = 0;
+  uint64_t plain_modulus = params_.plain_modulus().value();
   seal::util::try_invert_uint_mod(bits_per_ciphertext, plain_modulus, inverse);
 
   int ptr = 0;
