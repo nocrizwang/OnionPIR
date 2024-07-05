@@ -189,18 +189,23 @@ std::vector<seal::Ciphertext> PirServer::make_query(uint32_t client_id, PirQuery
   DEBUG_PRINT("ptr: " << ptr);
   auto l = pir_params_.get_l();
   for (int i = 1; i < dims_.size(); i++) {
-    GSWCiphertext gsw;
-
+    auto gsw_gen_start = CURR_TIME;
+    
+    // Extracting the current GSW query vector from the expanded query
+    // ? Can we batch this operation outside the loop?
     std::vector<seal::Ciphertext> lwe_vector;
     for (int k = 0; k < l; k++) {
       lwe_vector.push_back(query_vector[ptr]);
       ptr += 1;
     }
 
-    auto gsw_gen_start = CURR_TIME;
+    // ? Converting the BFV ciphertext to GSW ciphertext
+    GSWCiphertext gsw;
     key_gsw.query_to_gsw(lwe_vector, client_gsw_keys_[client_id], gsw);
+
     auto gsw_gen_end = CURR_TIME;
 
+    // Evaluate the external product
     result = evaluate_gsw_product(result, gsw);
     auto ext_prod_end = CURR_TIME;  // external product time
 
@@ -208,7 +213,8 @@ std::vector<seal::Ciphertext> PirServer::make_query(uint32_t client_id, PirQuery
     DEBUG_PRINT("Dim " << i << " external product time: \t" << TIME_DIFF(gsw_gen_end, ext_prod_end) << "\tms\n");
   }
 
-  evaluator_.mod_switch_to_next_inplace(result[0]);
+  // modulus switching so to reduce the response size.
+  evaluator_.mod_switch_to_next_inplace(result[0]); // result.size() == 1.
   return result;
 }
 
