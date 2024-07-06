@@ -268,7 +268,7 @@ void PirServer::set_database(std::vector<Entry> &new_db) {
 
   const uint128_t coeff_mask = (uint128_t(1) << (bits_per_coeff)) - 1;  // bits_per_coeff many 1s
 
-  // ! Optimization: the commented code snippet can be replaced using a multiplication.
+  // ! Optimization: the code snippet inside _DEBUG can be replaced using a multiplication.
   // We can do this because the size of each entry is fixed to pir_params_.get_entry_size().
   // I.e. new_db[j].size() == pir_params_.get_entry_size() for all j.
   // Also, there is no need to check the upper limit (new_db.size()) as the integer division rounds down when we calculate num_plaintexts.

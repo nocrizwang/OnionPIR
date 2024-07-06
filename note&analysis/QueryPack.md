@@ -10,6 +10,12 @@ Quote from OnionPIR: "In our implementation, each ciphertext has 𝑛 = 4096 pla
 
 
 
+
+$$
+R = \mathbb{Z} / (x^n + 1)
+$$
+
+
 ### `QueryUnpack`
 
 The goal is to generate the normal BFV and RGSW queries from the single BFV ciphertext created in `QueryPack`. 
@@ -43,7 +49,6 @@ $$
 
 - In the code, we have `seal_params_.poly_modulus_degree() = 4096`. What does this mean? 
 - The trick for reducing query vectors by half. How is it done in details? The client only need to provide one bit information for the server, but how can the server generate the normal query obliviously?
-
 
 
 

@@ -54,7 +54,7 @@ public:
     for (int i = 1; i < ndim; i++) {
       dims_.push_back(2); // ! CHANGED 2 is better than 4 as we can do a trick to reduce the request queries. This is different from the paper.
     }
-    seal_params_.set_poly_modulus_degree(DatabaseConstants::PolyDegree);
+    seal_params_.set_poly_modulus_degree(DatabaseConstants::PolyDegree); // a_1 x^4095 + a_2 x^4094 + ... + a_4096 x^0
 
     if (DatabaseConstants::PolyDegree == 8192) {
       seal_params_.set_coeff_modulus(
@@ -79,7 +79,7 @@ public:
     }
 
 
-    // ! what is this "modulus" and "bits" used for? Meaning?
+    // ? what is this "modulus" and "bits" used for? Meaning?
     auto modulus = seal_params_.coeff_modulus();
     int bits = 0;
     for (int i = 0; i < modulus.size() - 1; i++) {

@@ -203,6 +203,8 @@ Entry generate_entry_with_id(uint64_t id, int len) {
 // Testing Onion PIR scheme 
 void test_pir() {
   print_func_name(__FUNCTION__);
+
+  const int experiment_times = 1;
   
   // setting parameters for PIR scheme
   // - Database size = 2^15
@@ -213,7 +215,8 @@ void test_pir() {
   // - l_key = 9 (Not sure for now)
   PirParams pir_params(1 << 15, 8, 1 << 15, 12000, 9, 9);
   pir_params.print_values();
-  const int client_id = 0;
+  const int client_id = rand();
+  DEBUG_PRINT("Client ID: " << client_id);
   PirServer server(pir_params); // Initialize the server with the parameters
   // server.gen_data();
 
@@ -244,7 +247,7 @@ void test_pir() {
   server.set_client_gsw_key(client_id, client.generate_gsw_from_key());
 
   // Run the query process many times.
-  for (int i = 0; i < 1; i++) {
+  for (int i = 0; i < experiment_times; i++) {
     int id = rand() % pir_params.get_num_entries();
 
     // === Client start generating query ===
