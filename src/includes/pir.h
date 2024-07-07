@@ -62,18 +62,19 @@ public:
     for (int i = 1; i < ndim; i++) {
       dims_.push_back(2); // ! CHANGED 2 is better than 4 as we can do a trick to reduce the request queries. This is different from the paper.
     }
-    seal_params_.set_poly_modulus_degree(DatabaseConstants::PolyDegree); // a_1 x^4095 + a_2 x^4094 + ... + a_4096 x^0
 
+    // seal parameters requires at lest three parameters: poly_modulus_degree, coeff_modulus, plain_modulus
+    // Then the seal context will be set properly for encryption and decryption.
+    seal_params_.set_poly_modulus_degree(DatabaseConstants::PolyDegree); // example: a_1 x^4095 + a_2 x^4094 + ... + a_4096 x^0
     if (DatabaseConstants::PolyDegree == 8192) {
       seal_params_.set_coeff_modulus(
           CoeffModulus::Create(DatabaseConstants::PolyDegree, {60, 60, 60}));
     } else {
       seal_params_.set_coeff_modulus(CoeffModulus::BFVDefault(DatabaseConstants::PolyDegree));
     }
-
     seal_params_.set_plain_modulus(DatabaseConstants::PlaintextMod);
 
-    // ? Why it is possible to have multiple entries in a plaintext?
+    // It is possible to have multiple entries in a plaintext?
     // Plaintext definition in: seal::Plaintext (plaintext.h).
     // DEBUG_PRINT("get_num_entries_per_plaintext() = " << get_num_entries_per_plaintext());
 
@@ -87,15 +88,17 @@ public:
     }
 
 
-    // ? what is this "modulus" and "bits" used for? Meaning?
+    // This for-loop calculates the sum of bits in the first_context_data().parms().coeff_modulus().
+    // In our case, we have 36 + 36 = 72 bits. This is used for calculating the number of bits required for the base (B) in RGSW.
     auto modulus = seal_params_.coeff_modulus();
     int bits = 0;
     for (int i = 0; i < modulus.size() - 1; i++) {
       bits += modulus[i].bit_count();
-    }
+    } // bits = 72
 
-    // ? What is this used for? It seems that later in client.cpp, PirClient::generate_query(std::uint64_t entry_index)
     // ! uses this in the "pow". But if this base_log2_ means "$\log_2 {B}$", then pow << base_log2_ means pow * B ?
+    // The number of bits for representing the largest modulus possible in the given context. See analysis folder.
+    // This line rounds bits/l up to the nearest integer. 
     base_log2_ = (bits + l - 1) / l;
 
     // Set up parameters for GSW in external_prod.h

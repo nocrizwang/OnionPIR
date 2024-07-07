@@ -46,6 +46,11 @@ void PirParams::print_values() {
             << seal_params_.coeff_modulus().size() << std::endl;
   std::cout << "  seal_params_.plain_modulus().bitcount()  = "
             << seal_params_.plain_modulus().bit_count() << std::endl;
+
+  DEBUG_PRINT("  coeff_modulus()[0].value() = " << seal_params_.coeff_modulus()[0].value());
+  DEBUG_PRINT("  coeff_modulus()[1].value() = " << seal_params_.coeff_modulus()[1].value());
+  DEBUG_PRINT("  coeff_modulus()[2].value() = " << seal_params_.coeff_modulus()[2].value());
+
   std::cout << "==============================================================" << std::endl;
 }
 

@@ -108,12 +108,13 @@ PirQuery PirClient::generate_query(std::uint64_t entry_index) {
   auto base_log2 = pir_params_.get_base_log2();
   auto context_data = context_->first_context_data();
   auto coeff_modulus = context_data->parms().coeff_modulus();
-  auto coeff_mod_count = coeff_modulus.size();  // example 2
+  auto coeff_mod_count = coeff_modulus.size();  // 2 here, not 3. Notice that here we use the first context_data, not all of coeff_modulus are used.
 
+  // The following two for-loops calculates the powers for GSW gadgets.
   __uint128_t inv[coeff_mod_count];
   for (int k = 0; k < coeff_mod_count; k++) {
     uint64_t result;
-    DEBUG_PRINT("coeff_modulus[k]: " << coeff_modulus[k].value());
+    DEBUG_PRINT("coeff_modulus["<< k << "]: " << coeff_modulus[k].value());
     seal::util::try_invert_uint_mod(bits_per_ciphertext, coeff_modulus[k], result);
     inv[k] = result;
   }
@@ -124,11 +125,11 @@ PirQuery PirClient::generate_query(std::uint64_t entry_index) {
     uint128_t pow = 1;
     for (int j = 0; j <= l; j++) {
       pow2[i][j] = pow;
-      pow = (pow << base_log2) % mod;
+      pow = (pow << base_log2) % mod; // multiply by B every time
     }
   }
 
-  // This for loop corresponds to the for loop in Algorithm 1 from the OnionPIR paper
+  // This for-loop corresponds to the for-loop in Algorithm 1 from the OnionPIR paper
   int ptr = dims_[0];
   for (int i = 1; i < query_indexes.size(); i++) {  // dimensions
     // we use this if statement to replce the j for loop in Algorithm 1. This is because N_i = 2 for all i > 0
