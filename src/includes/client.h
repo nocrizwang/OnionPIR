@@ -10,7 +10,10 @@ public:
 
   /*!
       Generates an OnionPIR query corresponding to the plaintext that encodes
-     the given entry index.
+     the given entry index. High level steps:
+     1. Calculate the plaintext index. Generate plaintexts query (b vectors in paper) for each dimension.
+     2. Creates a plain_query (pt in paper), add the first dimension, then encrypts it.
+     3. For the rest dimensions, calculate required RGSW coefficients and insert them into the ciphertext. Result is $\tilde c$ in paper.
   */
   PirQuery generate_query(std::uint64_t entry_index);
 

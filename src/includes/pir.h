@@ -10,9 +10,17 @@
 #define CURR_TIME std::chrono::high_resolution_clock::now()
 #define TIME_DIFF(start, end) std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count()
 
-#define DEBUG_PRINT(s) std::cout << s << std::endl;  // print for debug
 
-// #define DEBUG_PRINT(s) ; // do nothing
+// print for debug. Easily turn on/off by defining _DEBUG
+#ifdef _DEBUG
+#define DEBUG_PRINT(s) std::cout << s << std::endl;
+#endif
+
+#ifdef _BENCHMARK
+#define DEBUG_PRINT(s) ; // do nothing
+#endif
+
+#define PRINT_BAR DEBUG_PRINT("==============================================================");
 
 // ================== NAMESPACES  ==================
 using namespace seal::util;

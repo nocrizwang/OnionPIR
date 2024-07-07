@@ -4,9 +4,9 @@
 #include "seal/util/scalingvariant.h"
 #include <bitset>
 
-#define PRINT_INT_ARRAY(arr, size)           \
+#define PRINT_INT_ARRAY(arr_name, arr, size) \
     do {                                     \
-        std::cout << "[";                    \
+        std::cout << arr_name << ": [";      \
         for (int i = 0; i < size; ++i) {     \
             std::cout << arr[i];             \
             if (i < size - 1)                \
@@ -77,19 +77,17 @@ PirQuery PirClient::generate_query(std::uint64_t entry_index) {
   // Get the corresponding index of the plaintext in the database
   size_t plaintext_index = get_database_plain_index(entry_index);
   std::vector<size_t> query_indexes = get_query_indexes(plaintext_index);
-  PRINT_INT_ARRAY(query_indexes.data(), query_indexes.size());
+  PRINT_INT_ARRAY("query_indexes", query_indexes.data(), query_indexes.size());
   uint64_t coeff_count = params_.poly_modulus_degree(); // 4096
 
   // The number of bits required for the first dimension is equal to the size of the first dimension
-
   uint64_t msg_size = dims_[0] + pir_params_.get_l() * (dims_.size() - 1);
   uint64_t bits_per_ciphertext = 1; // padding msg_size to the next power of 2
 
   while (bits_per_ciphertext < msg_size)
     bits_per_ciphertext *= 2;
 
-  uint64_t size_of_other_dims = DBSize_ / dims_[0];
-  seal::Plaintext plain_query(coeff_count);
+  seal::Plaintext plain_query(coeff_count); // we allow 4096 coefficients in the plaintext polynomial to be set as suggested in the paper.
 
   // Algorithm 1 from the OnionPIR Paper
   // We set the corresponding coefficient to the inverse so the value of the
@@ -99,16 +97,15 @@ PirQuery PirClient::generate_query(std::uint64_t entry_index) {
   DEBUG_PRINT("plain_modulus: " << plain_modulus);
   seal::util::try_invert_uint_mod(bits_per_ciphertext, plain_modulus, inverse);
 
-  int ptr = 0;
+  // Add the first dimension query vector to the query
   plain_query[ query_indexes[0] ] = inverse;
-  ptr += dims_[0];
-
-  PirQuery query;
-  encryptor_->encrypt_symmetric(plain_query, query);
+  
+  // Encrypt plain_query first. Later we will insert the rest.
+  PirQuery query; // pt in paper
+  encryptor_->encrypt_symmetric(plain_query, query);  // $\tilde c$ in paper
 
   auto l = pir_params_.get_l();
   auto base_log2 = pir_params_.get_base_log2();
-
   auto context_data = context_->first_context_data();
   auto coeff_modulus = context_data->parms().coeff_modulus();
   auto coeff_mod_count = coeff_modulus.size();  // example 2
@@ -132,6 +129,7 @@ PirQuery PirClient::generate_query(std::uint64_t entry_index) {
   }
 
   // This for loop corresponds to the for loop in Algorithm 1 from the OnionPIR paper
+  int ptr = dims_[0];
   for (int i = 1; i < query_indexes.size(); i++) {  // dimensions
     // we use this if statement to replce the j for loop in Algorithm 1. This is because N_i = 2 for all i > 0
     // When 1 is requested, we use initial encrypted value of PirQuery.
@@ -141,10 +139,10 @@ PirQuery PirClient::generate_query(std::uint64_t entry_index) {
       for (int j = 0; j < l; j++) {
         // ? what is this k for?
         for (int k = 0; k < coeff_mod_count; k++) {
-          auto pad = k * coeff_count;
+          auto pt_offset = k * coeff_count;
           __uint128_t mod = coeff_modulus[k].value();
           auto coef = pow2[k][l - 1 - j] * inv[k] % mod;
-          pt[j + pad] = (pt[j + pad] + coef) % mod;
+          pt[j + pt_offset] = (pt[j + pt_offset] + coef) % mod;
         }
       }
     }

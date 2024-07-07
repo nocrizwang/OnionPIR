@@ -13,7 +13,7 @@ void print_func_name(std::string func_name) {
 
 void run_tests() {
   DEBUG_PRINT("Running tests");
-  DEBUG_PRINT("==============================================================");
+  PRINT_BAR;
 
   // If we compare the following two examples, we do see that external product increase the noise much slower than BFV x BFV.
   // bfv_example();
@@ -22,7 +22,7 @@ void run_tests() {
   test_pir();
   // test_keyword_pir();
 
-  DEBUG_PRINT("==============================================================");
+  PRINT_BAR;
   DEBUG_PRINT("Tests finished");
 }
 
@@ -204,7 +204,15 @@ Entry generate_entry_with_id(uint64_t id, int len) {
 void test_pir() {
   print_func_name(__FUNCTION__);
 
-  const int experiment_times = 1;
+#ifdef _DEBUG
+  std::cout << "===== Debug build =====" << std::endl;
+#endif
+#ifdef _BENCHMARK
+  std::cout << " ===== Benchmark build =====" << std::endl;
+#endif
+
+
+  const int experiment_times = 10;
   
   // setting parameters for PIR scheme
   // - Database size = 2^15
@@ -215,17 +223,7 @@ void test_pir() {
   // - l_key = 9 (Not sure for now)
   PirParams pir_params(1 << 15, 8, 1 << 15, 12000, 9, 9);
   pir_params.print_values();
-  const int client_id = rand();
-  DEBUG_PRINT("Client ID: " << client_id);
   PirServer server(pir_params); // Initialize the server with the parameters
-  // server.gen_data();
-
-#ifdef _DEBUG
-  std::cout << "===== Debug build =====" << std::endl;
-#endif
-#ifdef _BENCHMARK
-  std::cout << " ===== Benchmark build =====" << std::endl;
-#endif
 
 
   DEBUG_PRINT("Initializing server...");
@@ -240,19 +238,26 @@ void test_pir() {
   server.set_database(data);
 
 
-  DEBUG_PRINT("Initializing client...");
-  PirClient client(pir_params);
-  server.decryptor_ = client.get_decryptor();
-  server.set_client_galois_key(client_id, client.create_galois_keys());
-  server.set_client_gsw_key(client_id, client.generate_gsw_from_key());
+  // DEBUG_PRINT("Initializing client...");
 
   // Run the query process many times.
   for (int i = 0; i < experiment_times; i++) {
-    int id = rand() % pir_params.get_num_entries();
+    srand(time(0)); // reset the seed for the random number generator
+    // Initialize the client
+    PirClient client(pir_params);
+    const int client_id = rand();
+    DEBUG_PRINT("Client ID: " << client_id);
+
+    // 
+    server.decryptor_ = client.get_decryptor();
+    server.set_client_galois_key(client_id, client.create_galois_keys());
+    server.set_client_gsw_key(client_id, client.generate_gsw_from_key());
 
     // === Client start generating query ===
+    size_t entry_index = rand() % pir_params.get_num_entries();
+
     auto c_start_time = CURR_TIME;  // client start time for the query
-    auto query = client.generate_query(id);
+    auto query = client.generate_query(entry_index);
     
     auto s_start_time = CURR_TIME;  // server start time for processing the query
     auto result = server.make_query(client_id, std::move(query));
@@ -260,14 +265,14 @@ void test_pir() {
     
     // client gets result from the server and decrypts it
     auto decrypted_result = client.decrypt_result(result);
-    Entry entry = client.get_entry_from_plaintext(id, decrypted_result[0]);
+    Entry entry = client.get_entry_from_plaintext(entry_index, decrypted_result[0]);
     auto c_end_time = CURR_TIME;
     
     DEBUG_PRINT("Server Time: " << TIME_DIFF(s_start_time, s_end_time) << " ms");
     DEBUG_PRINT("Client Time: " << TIME_DIFF(c_start_time, c_end_time) - TIME_DIFF(s_start_time, s_end_time) << " ms");
     DEBUG_PRINT("Noise budget left: " << client.get_decryptor()->invariant_noise_budget(result[0]));
 
-    if (entry == data[id]) {
+    if (entry == data[entry_index]) {
       std::cout << "Success!" << std::endl;
     } else {
       std::cout << "Failure!" << std::endl;
@@ -275,8 +280,9 @@ void test_pir() {
       std::cout << "Result:\t";
       print_entry(entry);
       std::cout << "Data:\t";
-      print_entry(data[id]);
+      print_entry(data[entry_index]);
     }
+    PRINT_BAR;
   }
 }
 
