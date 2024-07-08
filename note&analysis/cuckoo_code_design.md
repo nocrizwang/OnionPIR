@@ -57,7 +57,15 @@ function generate_kv_pair(F, key_id, hashed_key_width, entry_size) {
 
 ### Client design
 
-TODO
+```pseudocode
+function generate_cuckoo_query(keyword, h1, h2) {
+	idx_query1 := h1(keyword)
+	query1 := generate_query(idx_query1)
+	idx_query2 := h2(keyword)
+	query2 := generate_query(idx_query2)
+	Return {query1, query2}
+}
+```
 
 
 
