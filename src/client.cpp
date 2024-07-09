@@ -1,5 +1,6 @@
 #include "client.h"
 #include "external_prod.h"
+#include "pir.h"
 #include "seal/util/defines.h"
 #include "seal/util/scalingvariant.h"
 #include <bitset>
@@ -151,6 +152,46 @@ PirQuery PirClient::generate_query(std::uint64_t entry_index) {
 
   return query;
 }
+
+/**
+ * @brief Generate two queries in cuckoo hashing 
+ * 
+ * @param seed1 seed for the first hash function
+ * @param seed2 seed for the second hash function
+ * @param table_size used to calculate the index
+ * @param keyword keyword to be searched
+ * @return std::vector<PirQuery> two queries generated
+ */
+std::vector<PirQuery> PirClient::generate_cuckoo_query(uint64_t seed1, uint64_t seed2, uint64_t table_size, Key keyword) {
+  size_t index1 = std::hash<Key>{}(keyword ^ seed1) % table_size;
+  size_t index2 = std::hash<Key>{}(keyword ^ seed2) % table_size;
+  PirQuery query1 = PirClient::generate_query(index1);
+  PirQuery query2 = PirClient::generate_query(index2);
+  return {query1, query2};
+}
+
+void PirClient::cuckoo_process_reply(uint64_t seed1, uint64_t seed2, uint64_t table_size, Key keyword, std::vector<seal::Ciphertext> reply1, std::vector<seal::Ciphertext> reply2) {
+  size_t index1 = std::hash<Key>{}(keyword ^ seed1) % table_size;
+  size_t index2 = std::hash<Key>{}(keyword ^ seed2) % table_size;
+  Entry entry1 = PirClient::get_entry_from_plaintext(index1, PirClient::decrypt_result(reply1)[0]);
+  Entry entry2 = PirClient::get_entry_from_plaintext(index2, PirClient::decrypt_result(reply2)[0]);
+  // check which entry has hashed keyword in the first half of the entry
+  if (entry1.size() < pir_params_.get_hashed_key_width() || entry2.size() < pir_params_.get_hashed_key_width()) {
+    throw std::invalid_argument("Entry size is too small");
+  } else {
+    // calculate hashed keyword stored
+    // ! How to calculate hashed keyword not clear. Shouldn't entry look like (hash(keyword)|value)?
+    Entry hashed_key = generate_entry_with_id(keyword, pir_params_.get_entry_size(), pir_params_.get_hashed_key_width());
+    if (hashed_key == entry1) {
+      DEBUG_PRINT(std::string("Keyword found in index ") + std::to_string(index1));
+    } else if (hashed_key == entry2) {
+      DEBUG_PRINT(std::string("Keyword found in index ") + std::to_string(index2));
+    } else {
+      throw std::invalid_argument("Keyword not found");
+    }
+  }
+}
+
 
 seal::GaloisKeys PirClient::create_galois_keys() {
   std::vector<uint32_t> galois_elts = {1};
