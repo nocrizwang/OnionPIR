@@ -8,7 +8,12 @@
 #include <random>
 
 void print_func_name(std::string func_name) {
-  std::cout << "                       "<< func_name << "                         " << std::endl;
+#ifdef _DEBUG
+  std::cout << "                    "<< func_name << "(Debug build)" << std::endl;
+#endif
+#ifdef _BENCHMARK
+  std::cout << "                    "<< func_name << "(Benchmark build)" << std::endl;
+#endif
 }
 
 void run_tests() {
@@ -19,8 +24,9 @@ void run_tests() {
   // bfv_example();
   // test_external_product();
 
-  test_pir();
-  // test_keyword_pir();
+  // test_pir();
+  test_keyword_pir(); // two server version
+  // test_cuckoo_keyword_pir(); // single server version
 
   PRINT_BAR;
   DEBUG_PRINT("Tests finished");
@@ -143,74 +149,10 @@ void test_external_product() {
   }
 }
 
-/**
- * @brief Given an entry id and the length of the entry, generate a random entry using random number generator.
- * 
- * @param id entry id
- * @param len length(size) of the entry. Each entry is a vector of bytes.
- * @return Entry 
- */
-Entry generate_entry(int id, int len) {
-  Entry entry;
-  // ? I think reserving enough space will help reduce the number of reallocations.
-  // My test shows that it improves the performance by about 40%. 17000ms -> 10000ms
-  entry.reserve(len);   
-  // rng here is a pseudo-random number generator: https://en.cppreference.com/w/cpp/numeric/random/mersenne_twister_engine
-  // According to the notes in: https://en.cppreference.com/w/cpp/numeric/random/rand, 
-  // rand() is not recommended for serious random-number generation needs. Therefore we need this mt19937.
-  // Other methods are recommended in: 
-  std::mt19937 rng(id); 
-  for (int i = 0; i < len; i++) {
-    entry.push_back(rng() % 256); // 256 is the maximum value of a byte
-  }
-
-  // sample entry print. Should look like: 
-  // 254, 109, 126, 66, 220, 98, 230, 17, 83, 106, 123,
-  /*
-  if (id == 100) {
-    DEBUG_PRINT("First 10 bytes of the " + std::to_string(id) + "th entry: ");
-    print_entry(entry);
-    DEBUG_PRINT("Entry size: " << entry.size());  
-  }
-  */
-  return entry;
-}
-
-/**
- * @brief Generate an entry with a specific id. The first 8 bytes of the entry is the id itself.
- * 
- * @param id id of the entry
- * @param len length of the entry
- * @return Entry 
- */
-Entry generate_entry_with_id(uint64_t id, int len) {
-  Entry entry;
-  entry.reserve(len);   // ? I think this will help reduce the number of reallocations.
-  std::mt19937 rng(id);
-
-  // push the entry id into the first 8 bytes of the entry
-  for (int i = 0; i < 8; i++) {
-    entry.push_back((id >> (8 * i)) % 256); // shift 8 bits to the right each time
-  }
-
-  // generate the rest of the entry using random numbers
-  for (int i = 0; i < len - 8; i++) {
-    entry.push_back(rng() % 256);
-  }
-  return entry;
-}
 
 // Testing Onion PIR scheme 
 void test_pir() {
   print_func_name(__FUNCTION__);
-
-#ifdef _DEBUG
-  std::cout << "===== Debug build =====" << std::endl;
-#endif
-#ifdef _BENCHMARK
-  std::cout << " ===== Benchmark build =====" << std::endl;
-#endif
-
 
   const int experiment_times = 10;
   
@@ -287,6 +229,7 @@ void test_pir() {
 }
 
 void test_keyword_pir() {
+  print_func_name(__FUNCTION__);
   int table_size = 1 << 15;
   PirParams pir_params(table_size, 8, table_size, 12000, 9, 9);
   pir_params.print_values();
@@ -304,7 +247,7 @@ void test_keyword_pir() {
   for (int i = 0; i < num_entries; i++) {
     uint64_t keyword = rng();
     keywords.push_back(keyword);
-    data[i] = generate_entry_with_id(keyword, pir_params.get_entry_size());
+    data[i] = generate_entry_with_id(keyword, pir_params.get_entry_size(), 8);  // 8 in Zhikun's code
   }
 
   std::hash<uint64_t> hasher;
@@ -350,11 +293,6 @@ void test_keyword_pir() {
       cuckoo2[hasher(x ^ seed2) % table_size] = data[i];
     }
   }
-
-  // for (int i = 0; i < num_entries; i++) {
-  //   cuckoo1[i].resize(pir_params.get_entry_size(), 0);
-  //   cuckoo2[i].resize(pir_params.get_entry_size(), 0);
-  // }
 
   server1.set_database(cuckoo1);
   server2.set_database(cuckoo2);
@@ -405,4 +343,9 @@ void test_keyword_pir() {
       print_entry(data[id]);
     }
   }
+}
+
+void test_cuckoo_keyword_pir() {
+  print_func_name(__FUNCTION__);
+
 }

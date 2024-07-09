@@ -11,7 +11,8 @@
 // client_galois_keys_, client_gsw_keys_, and db_ are not set yet.
 PirServer::PirServer(const PirParams &pir_params)
     : pir_params_(pir_params), context_(pir_params.get_seal_params()),
-      DBSize_(pir_params.get_DBSize()), evaluator_(context_), dims_(pir_params.get_dims()) {}
+      DBSize_(pir_params.get_DBSize()), evaluator_(context_), dims_(pir_params.get_dims()),
+      hashed_key_width_(pir_params_.get_hashed_key_width()) {}
 
 // Fills the database with random data
 void PirServer::gen_data() {
@@ -24,6 +25,53 @@ void PirServer::gen_data() {
     }
   }
   set_database(data);
+}
+
+CuckooInitData PirServer::gen_keyword_data(size_t max_iter, uint64_t keyword_seed) {
+  // Generate random keywords for the database.
+  std::vector<Key> keywords;
+  keywords.reserve(pir_params_.get_num_entries());
+  // We randomly generate a bunch of keywords. Then, we treat each keyword in the key-value pair as a seed.
+  // In this the current method, all keyword is generated using the same keyword_seed given by client.
+  std::mt19937_64 key_rng(keyword_seed); 
+  for (size_t i = 0; i < pir_params_.get_num_entries(); ++i) {
+    keywords.push_back(key_rng()); 
+  }
+
+  // Insert data into the database using cuckoo hashing
+  std::vector<CuckooSeeds> used_seeds;
+  std::mt19937_64 hash_rng;
+  for (size_t i = 0; i < max_iter; i++) {
+    uint64_t seed1 = hash_rng();
+    uint64_t seed2 = hash_rng();
+    used_seeds.push_back({seed1, seed2});
+    std::vector<Key> cuckoo_hash_table = cuckoo_insert(seed1, seed2, 100, keywords, pir_params_.get_blowup_factor());
+    // now we have a successful insertion. We create the database using the keywords we have and their corresponding values.
+    if (cuckoo_hash_table.size() > 0) {
+      std::vector<Entry> data(pir_params_.get_num_entries() * pir_params_.get_blowup_factor()); 
+      
+      // we insert key-value pair one by one. Generating the entries on the fly.
+      size_t entry_size = pir_params_.get_entry_size();
+      size_t hashed_key_width = pir_params_.get_hashed_key_width();
+      for (size_t j = 0; j < pir_params_.get_num_entries(); ++j) {
+        Entry entry = generate_entry_with_id(keywords[i], entry_size, hashed_key_width);
+        size_t index1 = std::hash<Key>{}(keywords[i] ^ seed1) % cuckoo_hash_table.size();
+        size_t index2 = std::hash<Key>{}(keywords[i] ^ seed2) % cuckoo_hash_table.size(); 
+        if (cuckoo_hash_table[index1] == keywords[i]) {
+          data[index1] = entry;
+        } else {
+          data[index2] = entry;
+        }
+      }
+
+      // set the database and return the used seeds and the database to the client. Data is returned for debugging purposes.
+      set_database(data);
+      return {used_seeds, data};
+    }
+  }
+  std::cerr << "Failed to insert data into cuckoo hash table" << std::endl;
+  // resize the cuckoo_hash_table to 0
+  return {used_seeds, {}};
 }
 
 // Computes a dot product between the selection vector and the database for the
@@ -175,6 +223,80 @@ void PirServer::set_client_gsw_key(uint32_t client_id, GSWCiphertext &&gsw_key) 
   client_gsw_keys_[client_id] = gsw_key;
 }
 
+
+Entry generate_entry(int id, size_t entry_size) {
+  Entry entry;
+  entry.reserve(entry_size); // reserving enough space will help reduce the number of reallocations.
+  // rng here is a pseudo-random number generator: https://en.cppreference.com/w/cpp/numeric/random/mersenne_twister_engine
+  // According to the notes in: https://en.cppreference.com/w/cpp/numeric/random/rand, 
+  // rand() is not recommended for serious random-number generation needs. Therefore we need this mt19937.
+  // Other methods are recommended in: 
+  std::mt19937_64 rng(id); 
+  for (int i = 0; i < entry_size; i++) {
+    entry.push_back(rng() % 256); // 256 is the maximum value of a byte
+  }
+
+  // sample entry print. Should look like: 
+  // 254, 109, 126, 66, 220, 98, 230, 17, 83, 106, 123,
+  /*
+  if (id == 100) {
+    DEBUG_PRINT("First 10 bytes of the " + std::to_string(id) + "th entry: ");
+    print_entry(entry);
+    DEBUG_PRINT("Entry size: " << entry.size());  
+  }
+  */
+  return entry;
+}
+
+
+Entry generate_entry_with_id(uint64_t key_id, size_t entry_size, size_t hashed_key_width) {
+  if (entry_size < hashed_key_width) {
+    throw std::invalid_argument("Entry size is too small for the hashed key width");
+  }
+
+  Entry entry;
+  entry.reserve(entry_size);
+  std::mt19937_64 rng(key_id);
+  // generate the entire entry using random numbers for simplicity.
+  for (int i = 0; i < entry_size; i++) {
+    entry.push_back(rng() % 256);
+  }
+  return entry;
+}
+
+std::vector<Key> cuckoo_insert(uint64_t seed1, uint64_t seed2, size_t swap_limit,
+                                 std::vector<Key> &keywords, float blowup_factor) {
+  std::vector<uint64_t> table(keywords.size() * blowup_factor, 0); // cuckoo hash table for keywords
+  
+  // loop and insert each key-value pair into the cuckoo hash table.
+  for (size_t i = 0; i < keywords.size(); ++i) {
+    Key holding = keywords[i]; // initialy holding is the keyword. Also used for swapping.
+    // insert the holding value
+    bool inserted = false;
+    for (size_t j = 0; j < swap_limit; ++j) {
+      // hash the holding keyword to indices in the table
+      size_t index1 = std::hash<Key>{}(holding ^ seed1) % table.size();
+      size_t index2 = std::hash<Key>{}(holding ^ seed2) % table.size(); 
+      if (table[index1] == 0) {
+        table[index1] = keywords[i];
+        inserted = true;
+        break;
+      }
+      std::swap(holding, table[index1]); // swap the holding value with the value in the table
+      if (table[index2] == 0) {
+        table[index2] = keywords[i];
+        inserted = true;
+        break;
+      }
+      std::swap(holding, table[index2]); // swap the holding value with the value in the table
+    }
+    if (!inserted) {
+      return {};  // return an empty vector if the insertion is not successful.
+    }
+  }
+  return table;
+}
+
 std::vector<seal::Ciphertext> PirServer::make_query(uint32_t client_id, PirQuery &&query) {
 
   // Query expansion
@@ -268,34 +390,20 @@ void PirServer::set_database(std::vector<Entry> &new_db) {
 
   const uint128_t coeff_mask = (uint128_t(1) << (bits_per_coeff)) - 1;  // bits_per_coeff many 1s
 
-  // ! Optimization: the code snippet inside _DEBUG can be replaced using a multiplication.
-  // We can do this because the size of each entry is fixed to pir_params_.get_entry_size().
-  // I.e. new_db[j].size() == pir_params_.get_entry_size() for all j.
-  // Also, there is no need to check the upper limit (new_db.size()) as the integer division rounds down when we calculate num_plaintexts.
-
-  // sum_size: the total size of each plaintext in bytes.
-  int sum_size = num_entries_per_plaintext * pir_params_.get_entry_size();
-
-
   // Now we handle plaintexts one by one.
   for (int i = 0; i < num_plaintexts; i++) {
     seal::Plaintext plaintext(num_coeffs);
 
-#ifdef _DEBUG
     // Loop through the entries that corresponds to the current plaintext. 
     // Then calculate the total size (in bytes) of this plaintext.
-    // But this code snippet can be replaced with a multiplication.
+    // NOTE: it is possible that some entry is empty, which has size 0.
     int additive_sum_size = 0;
     for (int j = num_entries_per_plaintext * i;
          j < std::min(num_entries_per_plaintext * (i + 1), new_db.size()); j++) {
       additive_sum_size += new_db[j].size();
     }
-    assert(additive_sum_size == sum_size); // sanity check for different method of calculating sum_size
-    assert(num_entries_per_plaintext * num_plaintexts <= new_db.size()); // sanity check for the upper limit of the loop
-    assert(sum_size != 0);
-#endif
 
-    if (sum_size == 0) {
+    if (additive_sum_size == 0) {
       db_.push_back({});  // push an empty std::optional<seal::Plaintext>. {} is equivalent to std::nullopt
       continue;
     }

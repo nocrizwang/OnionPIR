@@ -114,7 +114,6 @@ PirQuery PirClient::generate_query(std::uint64_t entry_index) {
   __uint128_t inv[coeff_mod_count];
   for (int k = 0; k < coeff_mod_count; k++) {
     uint64_t result;
-    DEBUG_PRINT("coeff_modulus["<< k << "]: " << coeff_modulus[k].value());
     seal::util::try_invert_uint_mod(bits_per_ciphertext, coeff_modulus[k], result);
     inv[k] = result;
   }
