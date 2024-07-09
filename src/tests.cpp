@@ -25,8 +25,8 @@ void run_tests() {
   // test_external_product();
 
   // test_pir();
-  test_keyword_pir(); // two server version
-  // test_cuckoo_keyword_pir(); // single server version
+  // test_keyword_pir(); // two server version
+  test_cuckoo_keyword_pir(); // single server version
 
   PRINT_BAR;
   DEBUG_PRINT("Tests finished");
@@ -347,5 +347,14 @@ void test_keyword_pir() {
 
 void test_cuckoo_keyword_pir() {
   print_func_name(__FUNCTION__);
+  const int experiment_times = 1;
+
+  const float blowup_factor = 1.5;
+  const uint64_t DBSize = 1 << 16;  // must be power of two
+  const uint64_t num_entries = (1 << 15)*1.5;
+  PirParams pir_params(DBSize, 9, num_entries, 12000, 9, 9, 16, 1.5);
+  pir_params.print_values();
+  PirServer server(pir_params);
+
 
 }

@@ -54,10 +54,11 @@ CuckooInitData PirServer::gen_keyword_data(size_t max_iter, uint64_t keyword_see
       size_t entry_size = pir_params_.get_entry_size();
       size_t hashed_key_width = pir_params_.get_hashed_key_width();
       for (size_t j = 0; j < pir_params_.get_num_entries(); ++j) {
-        Entry entry = generate_entry_with_id(keywords[i], entry_size, hashed_key_width);
-        size_t index1 = std::hash<Key>{}(keywords[i] ^ seed1) % cuckoo_hash_table.size();
-        size_t index2 = std::hash<Key>{}(keywords[i] ^ seed2) % cuckoo_hash_table.size(); 
-        if (cuckoo_hash_table[index1] == keywords[i]) {
+        // Keyword(string) -> hash to fixed size bit string
+        Entry entry = generate_entry_with_id(keywords[j], entry_size, hashed_key_width);
+        size_t index1 = std::hash<Key>{}(keywords[j] ^ seed1) % cuckoo_hash_table.size();
+        size_t index2 = std::hash<Key>{}(keywords[j] ^ seed2) % cuckoo_hash_table.size(); 
+        if (cuckoo_hash_table[index1] == keywords[j]) {
           data[index1] = entry;
         } else {
           data[index2] = entry;
