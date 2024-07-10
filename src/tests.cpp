@@ -7,6 +7,8 @@
 #include <iostream>
 #include <random>
 
+#include <fstream>
+
 void print_func_name(std::string func_name) {
 #ifdef _DEBUG
   std::cout << "                    "<< func_name << "(Debug build)" << std::endl;
@@ -260,6 +262,7 @@ void test_keyword_pir() {
     }
     seed1 = rng();
     seed2 = rng();
+    DEBUG_PRINT("Seed1: " << seed1 << " Seed2: " << seed2);
     for (int i = 0; i < num_entries; i++) {
       uint64_t x = keywords[i];
       bool success = false;
@@ -285,14 +288,23 @@ void test_keyword_pir() {
   nxt:;
   }
 
+  // write the hashed indices to files
+  std::ofstream index1_file("/Users/sam/Desktop/college/CS/Crypto/PIR/keyword_OnionPIR/temp/ind1.txt");
+  std::ofstream index2_file("/Users/sam/Desktop/college/CS/Crypto/PIR/keyword_OnionPIR/temp/ind2.txt");
+
   for (int i = 0; i < num_entries; i++) {
     uint64_t x = keywords[i];
+    index1_file << hasher(x ^ seed1) % table_size << std::endl;
+    index2_file << hasher(x ^ seed2) % table_size << std::endl;
     if (t1[hasher(x ^ seed1) % table_size] == x) {
       cuckoo1[hasher(x ^ seed1) % table_size] = data[i];
     } else {
       cuckoo2[hasher(x ^ seed2) % table_size] = data[i];
     }
   }
+
+  index1_file.close();
+  index2_file.close();
 
   server1.set_database(cuckoo1);
   server2.set_database(cuckoo2);
@@ -358,7 +370,7 @@ void test_cuckoo_keyword_pir() {
 
   DEBUG_PRINT("Initializing server...");
   uint64_t keyword_seed = 123123;
-  CuckooInitData keyword_data = server.gen_keyword_data(1, keyword_seed);
+  CuckooInitData keyword_data = server.gen_keyword_data(100, keyword_seed);
 
   if (keyword_data.inserted_data.size() == 0) {
     DEBUG_PRINT("Failed to insert data into cuckoo table. Exiting...");

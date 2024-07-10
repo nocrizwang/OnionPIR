@@ -54,10 +54,10 @@ CuckooInitData PirServer::gen_keyword_data(size_t max_iter, uint64_t keyword_see
 
   // Insert data into the database using cuckoo hashing
   std::vector<CuckooSeeds> used_seeds;
-  std::mt19937_64 hash_rng;
+  // std::mt19937_64 hash_rng;
   for (size_t i = 0; i < max_iter; i++) {
-    uint64_t seed1 = hash_rng();
-    uint64_t seed2 = hash_rng();
+    uint64_t seed1 = key_rng();
+    uint64_t seed2 = key_rng();
     used_seeds.push_back({seed1, seed2});
     std::vector<Key> cuckoo_hash_table = cuckoo_insert(seed1, seed2, 100, keywords, pir_params_.get_blowup_factor());
     // now we have a successful insertion. We create the database using the keywords we have and their corresponding values.
@@ -281,35 +281,62 @@ Entry generate_entry_with_id(uint64_t key_id, size_t entry_size, size_t hashed_k
 
 std::vector<Key> cuckoo_insert(uint64_t seed1, uint64_t seed2, size_t swap_limit,
                                  std::vector<Key> &keywords, float blowup_factor) {
-  std::vector<uint64_t> table(keywords.size() * blowup_factor, 0); // cuckoo hash table for keywords
+  std::vector<uint64_t> two_tables(keywords.size() * blowup_factor, 0); // cuckoo hash table for keywords
+  size_t half_size = two_tables.size();
 
   // loop and insert each key-value pair into the cuckoo hash table.
+  std::hash<Key> hasher;
   for (size_t i = 0; i < keywords.size(); ++i) {
     Key holding = keywords[i]; // initialy holding is the keyword. Also used for swapping.
     // insert the holding value
     bool inserted = false;
     for (size_t j = 0; j < swap_limit; ++j) {
       // hash the holding keyword to indices in the table
-      size_t index1 = std::hash<Key>{}(holding ^ seed1) % table.size();
-      size_t index2 = std::hash<Key>{}(holding ^ seed2) % table.size(); 
-      if (table[index1] == 0) {
-        table[index1] = holding;
+      size_t index1 = std::hash<Key>{}(holding ^ seed1) % half_size;
+      
+      if (two_tables[index1] == 0) {
+        two_tables[index1] = holding;
         inserted = true;
         break;
       }
-      std::swap(holding, table[index1]); // swap the holding value with the value in the table
-      if (table[index2] == 0) {
-        table[index2] = holding;
+      std::swap(holding, two_tables[index1]); // swap the holding value with the value in the table
+      
+      // hash the holding keyword to another index in the table
+      size_t index2 = (std::hash<Key>{}(holding ^ seed2) % half_size);
+      assert(index1 + half_size != index2); // two hash functions should not hash to the same "index".
+      if (two_tables[index2] == 0) {
+        two_tables[index2] = holding;
         inserted = true;
         break;
       }
-      std::swap(holding, table[index2]); // swap the holding value with the value in the table
+      std::swap(holding, two_tables[index2]); // swap the holding value with the value in the table
     }
-    if (!inserted) {
+    if (inserted == false) {
+      DEBUG_PRINT("num_inserted: " << i);
+      // print the two indices that are causing the problem.
+      size_t holding_index1 = std::hash<Key>{}(holding ^ seed1) % half_size;
+      size_t holding_index2 = (std::hash<Key>{}(holding ^ seed2) % half_size);
+
+      Key first = two_tables[holding_index1];
+      Key second = two_tables[holding_index2];
+      DEBUG_PRINT("index1: " << holding_index1 << " index2: " << holding_index2);
+      DEBUG_PRINT("first: " << first << " second: " << second << " holding: " << holding);
+      
+      // the two hashed indices for first
+      size_t first_index1 = std::hash<Key>{}(first ^ seed1) % half_size;
+      size_t first_index2 = (std::hash<Key>{}(first ^ seed2) % half_size);
+      DEBUG_PRINT("first_index1: " << first_index1 << " first_index2: " << first_index2);
+
+      // the two hashed indices for second
+      size_t second_index1 = std::hash<Key>{}(second ^ seed1) % half_size;
+      size_t second_index2 = (std::hash<Key>{}(second ^ seed2) % half_size);
+      DEBUG_PRINT("second_index1: " << second_index1 << " second_index2: " << second_index2 << "\n");
+
+
       return {};  // return an empty vector if the insertion is not successful.
     }
   }
-  return table;
+  return two_tables;
 }
 
 std::vector<seal::Ciphertext> PirServer::make_query(uint32_t client_id, PirQuery &&query) {
