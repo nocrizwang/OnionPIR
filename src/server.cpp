@@ -6,6 +6,9 @@
 #include <cstdlib>
 #include <memory>
 #include <stdexcept>
+#include <unordered_set>
+
+#include <fstream>
 
 // copy the pir_params and set evaluator equal to the context_. 
 // client_galois_keys_, client_gsw_keys_, and db_ are not set yet.
@@ -30,12 +33,23 @@ void PirServer::gen_data() {
 CuckooInitData PirServer::gen_keyword_data(size_t max_iter, uint64_t keyword_seed) {
   // Generate random keywords for the database.
   std::vector<Key> keywords;
-  keywords.reserve(pir_params_.get_num_entries());
+  size_t key_num = pir_params_.get_num_entries() / pir_params_.get_blowup_factor(); // TODO: put this as pir params
+  keywords.reserve(key_num);
   // We randomly generate a bunch of keywords. Then, we treat each keyword in the key-value pair as a seed.
   // In this the current method, all keyword is generated using the same keyword_seed given by client.
   std::mt19937_64 key_rng(keyword_seed); 
-  for (size_t i = 0; i < pir_params_.get_num_entries(); ++i) {
+  for (size_t i = 0; i < key_num; ++i) {
     keywords.push_back(key_rng()); 
+  }
+
+  DEBUG_PRINT(keywords.size() << " keywords generated");
+  // check if the keywords are all unique: 
+  std::unordered_set<Key> unique_keywords(keywords.begin(), keywords.end());
+  if (unique_keywords.size() != keywords.size()) {
+    std::cerr << "Keywords are not unique" << std::endl;
+    return {{}, {}};
+  } else {
+    DEBUG_PRINT("Keywords are unique");
   }
 
   // Insert data into the database using cuckoo hashing
@@ -48,7 +62,7 @@ CuckooInitData PirServer::gen_keyword_data(size_t max_iter, uint64_t keyword_see
     std::vector<Key> cuckoo_hash_table = cuckoo_insert(seed1, seed2, 100, keywords, pir_params_.get_blowup_factor());
     // now we have a successful insertion. We create the database using the keywords we have and their corresponding values.
     if (cuckoo_hash_table.size() > 0) {
-      std::vector<Entry> data(pir_params_.get_num_entries() * pir_params_.get_blowup_factor()); 
+      std::vector<Entry> data(key_num); 
       
       // we insert key-value pair one by one. Generating the entries on the fly.
       size_t entry_size = pir_params_.get_entry_size();
@@ -268,7 +282,7 @@ Entry generate_entry_with_id(uint64_t key_id, size_t entry_size, size_t hashed_k
 std::vector<Key> cuckoo_insert(uint64_t seed1, uint64_t seed2, size_t swap_limit,
                                  std::vector<Key> &keywords, float blowup_factor) {
   std::vector<uint64_t> table(keywords.size() * blowup_factor, 0); // cuckoo hash table for keywords
-  
+
   // loop and insert each key-value pair into the cuckoo hash table.
   for (size_t i = 0; i < keywords.size(); ++i) {
     Key holding = keywords[i]; // initialy holding is the keyword. Also used for swapping.
@@ -279,13 +293,13 @@ std::vector<Key> cuckoo_insert(uint64_t seed1, uint64_t seed2, size_t swap_limit
       size_t index1 = std::hash<Key>{}(holding ^ seed1) % table.size();
       size_t index2 = std::hash<Key>{}(holding ^ seed2) % table.size(); 
       if (table[index1] == 0) {
-        table[index1] = keywords[i];
+        table[index1] = holding;
         inserted = true;
         break;
       }
       std::swap(holding, table[index1]); // swap the holding value with the value in the table
       if (table[index2] == 0) {
-        table[index2] = keywords[i];
+        table[index2] = holding;
         inserted = true;
         break;
       }

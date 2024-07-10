@@ -176,19 +176,18 @@ void PirClient::cuckoo_process_reply(uint64_t seed1, uint64_t seed2, uint64_t ta
   Entry entry1 = PirClient::get_entry_from_plaintext(index1, PirClient::decrypt_result(reply1)[0]);
   Entry entry2 = PirClient::get_entry_from_plaintext(index2, PirClient::decrypt_result(reply2)[0]);
   // check which entry has hashed keyword in the first half of the entry
-  if (entry1.size() < pir_params_.get_hashed_key_width() || entry2.size() < pir_params_.get_hashed_key_width()) {
+  size_t hashed_key_width = pir_params_.get_hashed_key_width();
+  if (entry1.size() < hashed_key_width || entry2.size() < hashed_key_width) {
     throw std::invalid_argument("Entry size is too small");
   } else {
     // calculate hashed keyword stored
     // ! How to calculate hashed keyword not clear. Shouldn't entry look like (hash(keyword)|value)?
-    Entry hashed_key = generate_entry_with_id(keyword, pir_params_.get_entry_size(), pir_params_.get_hashed_key_width());
-    if (hashed_key == entry1) {
-      DEBUG_PRINT(std::string("Keyword found in index ") + std::to_string(index1));
-    } else if (hashed_key == entry2) {
-      DEBUG_PRINT(std::string("Keyword found in index ") + std::to_string(index2));
-    } else {
+    Entry value = get_value_from_replies(entry1, entry2, keyword, hashed_key_width);
+    if (value.size() == 0) {
       throw std::invalid_argument("Keyword not found");
     }
+    DEBUG_PRINT("Printing the value: ")
+    print_entry(value);
   }
 }
 
@@ -255,4 +254,30 @@ Entry PirClient::get_entry_from_plaintext(size_t entry_index, seal::Plaintext pl
   }
 
   return result;
+}
+
+
+Entry get_value_from_replies(Entry reply1, Entry reply2, Key keyword, size_t hashed_key_width) {
+  Entry hashed_key = gen_single_key(keyword, hashed_key_width);
+  Entry value;
+  value.reserve(reply1.size() - hashed_key.size());
+
+  // we match the first hashed_key.size() elements of reply1 and reply2 with hashed_key
+  // if the hashed_key matches one of them, we add the corresponding value to the result
+  // If the hashed_key is not found in either, we return an empty entry
+  if (reply1.size() < hashed_key.size() || reply2.size() < hashed_key.size()) {
+    throw std::invalid_argument("Entry size is too small");
+  } else {
+    if (std::equal(hashed_key.begin(), hashed_key.end(), reply1.begin())) {
+      DEBUG_PRINT("Keyword found in reply 1");
+      value.insert(value.end(), reply1.begin() + hashed_key.size(), reply1.end());
+    } else if (std::equal(hashed_key.begin(), hashed_key.end(), reply2.begin())) {
+      DEBUG_PRINT("Keyword found in reply 2");
+      value.insert(value.end(), reply2.begin() + hashed_key.size(), reply2.end());
+    } else {
+      value = {};
+    }
+  }
+
+  return value;
 }

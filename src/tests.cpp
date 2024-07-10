@@ -349,12 +349,68 @@ void test_cuckoo_keyword_pir() {
   print_func_name(__FUNCTION__);
   const int experiment_times = 1;
 
-  const float blowup_factor = 1.5;
-  const uint64_t DBSize = 1 << 16;  // must be power of two
-  const uint64_t num_entries = (1 << 15)*1.5;
-  PirParams pir_params(DBSize, 9, num_entries, 12000, 9, 9, 16, 1.5);
+  const float blowup_factor = 2.0;
+  const size_t DBSize_ = 1 << 16;
+  const size_t num_entries = 1 << 16;
+  PirParams pir_params(DBSize_, 9, num_entries, 12000, 9, 9, 16, blowup_factor);
   pir_params.print_values();
   PirServer server(pir_params);
+
+  DEBUG_PRINT("Initializing server...");
+  uint64_t keyword_seed = 123123;
+  CuckooInitData keyword_data = server.gen_keyword_data(1, keyword_seed);
+
+  if (keyword_data.inserted_data.size() == 0) {
+    DEBUG_PRINT("Failed to insert data into cuckoo table. Exiting...");
+    return;
+  }
+  // Now we do have a cuckoo table with data inserted.
+  CuckooSeeds last_seeds = keyword_data.used_seeds.back();
+  uint64_t seed1 = last_seeds.first;
+  uint64_t seed2 = last_seeds.second;
+  DEBUG_PRINT("Seed1: " << seed1 << " Seed2: " << seed2);
+  
+  DEBUG_PRINT("Initializing client...");
+  PirClient client(pir_params);
+  for (int i = 0; i < experiment_times; i++) {
+    srand(time(0));
+    const int client_id = rand();
+    DEBUG_PRINT("Client ID: " << client_id);
+
+    server.decryptor_ = client.get_decryptor();
+    server.set_client_galois_key(client_id, client.create_galois_keys());
+    server.set_client_gsw_key(client_id, client.generate_gsw_from_key());
+
+    // Generate a random keyword using keyword_seed. 
+    size_t wanted_keyword_idx = rand() % num_entries;
+    std::mt19937_64 rng(keyword_seed);
+    rng.discard(wanted_keyword_idx);
+    Key wanted_keyword = rng();
+    DEBUG_PRINT("Wanted keyword: " << wanted_keyword);
+
+    // client start generating keyword query
+    auto c_start_time = CURR_TIME;
+    std::vector<PirQuery> queries = client.generate_cuckoo_query(seed1, seed2, num_entries, wanted_keyword);
+    auto c_end_time = CURR_TIME;
+
+    // server start processing the query
+    auto s_start_time = CURR_TIME;
+    // we know that there is only two queries in the vector queries.
+    auto reply1 = server.make_query(client_id, std::move(queries[0]));
+    auto reply2 = server.make_query(client_id, std::move(queries[1]));
+    auto s_end_time = CURR_TIME;
+
+    // client start processing the reply
+    auto c2_start_time = CURR_TIME;
+    client.cuckoo_process_reply(seed1, seed2, num_entries, wanted_keyword, reply1, reply2);
+    auto c2_end_time = CURR_TIME;
+
+    DEBUG_PRINT("Server Time: " << TIME_DIFF(s_start_time, s_end_time) << " ms");
+    DEBUG_PRINT("Client Time: " << TIME_DIFF(c_start_time, c_end_time) + TIME_DIFF(c2_start_time, c2_end_time) << " ms");
+    DEBUG_PRINT("Noise budget left: " << client.get_decryptor()->invariant_noise_budget(reply1[0]));
+    DEBUG_PRINT("Noise budget left: " << client.get_decryptor()->invariant_noise_budget(reply2[0]));
+
+  }
 
 
 }

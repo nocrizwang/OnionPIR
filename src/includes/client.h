@@ -55,3 +55,11 @@ private:
   */
   std::vector<size_t> get_query_indexes(size_t plaintext_index);
 };
+
+/**
+ * @brief 
+ * we match the first hashed_key.size() elements of reply1 and reply2 with hashed_key.
+ * If the hashed_key matches one of them, we add the corresponding value to the result.
+ * If the hashed_key is not found in either, we return an empty entry.
+ */
+Entry get_value_from_replies(Entry reply1, Entry reply2, Key keyword, size_t hashed_key_width);
