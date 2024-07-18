@@ -26,9 +26,9 @@ void run_tests() {
   // bfv_example();
   // test_external_product();
 
-  // test_pir();
+  test_pir();
   // test_keyword_pir(); // two server version
-  test_cuckoo_keyword_pir(); // single server version
+  // test_cuckoo_keyword_pir(); // single server version
 
   PRINT_BAR;
   DEBUG_PRINT("Tests finished");
@@ -156,7 +156,7 @@ void test_external_product() {
 void test_pir() {
   print_func_name(__FUNCTION__);
 
-  const int experiment_times = 10;
+  const int experiment_times = 1;
   
   // setting parameters for PIR scheme
   // - Database size = 2^15

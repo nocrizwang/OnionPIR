@@ -5,13 +5,12 @@ In the explanation for `SEALContext` class in `SEAL/native/src/seal/context.h`, 
 Now, in the code, the number of bits we can use for storing a default BFV coefficient is `bits`.  Specifically, `bits = 72` when poly_modulus_degree is set to 4096. As for `base_log2_`, check the calculation below. 
 $$
 \begin{align*}
-B^l \leq \log_2 \mathbf{bits}\\
+B^l \leq 2^\mathbf{bits}\\
 \log_2 B^l \leq \mathbf{bits}\\
 l \cdot \log_2B \leq \mathbf{bits}\\
 \log_2B \leq \frac{\mathbf{bits}}{l}
 \end{align*}
 $$
-
 
 
 

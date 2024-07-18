@@ -203,7 +203,7 @@ std::vector<seal::Ciphertext> PirServer::expand_query(uint32_t client_id,
 
   int expansion_factor = 0;
 
-  while ((1 << expansion_factor) < exp) {
+  while ((1 << expansion_factor) < exp) { // to the power of 2 over exp.
     expansion_factor++;
   }
 
@@ -353,7 +353,6 @@ std::vector<seal::Ciphertext> PirServer::make_query(uint32_t client_id, PirQuery
   std::cout << "Dim 0 time: " << TIME_DIFF(exp_qry_end, CURR_TIME) << " ms" << std::endl;
 
   int ptr = dims_[0];
-  DEBUG_PRINT("ptr: " << ptr);
   auto l = pir_params_.get_l();
   for (int i = 1; i < dims_.size(); i++) {
     auto gsw_gen_start = CURR_TIME;

@@ -16,6 +16,25 @@
         std::cout << "]" << std::endl;       \
     } while (0)
 
+/**
+#include <iomanip>
+void print_uint128(__uint128_t value) {
+    // Split the 128-bit value into two 64-bit parts
+    uint64_t high = value >> 64;
+    uint64_t low = static_cast<uint64_t>(value);
+
+    // Print the high part, if it's non-zero, to avoid leading zeros
+    if (high != 0) {
+        std::cout << high;
+        std::cout << std::setw(20) << std::setfill('0') << low;
+    } else {
+        std::cout << low;
+    }
+    std::cout << std::endl;
+}
+ */
+
+
 PirClient::PirClient(const PirParams &pir_params)
     : params_(pir_params.get_seal_params()), DBSize_(pir_params.get_DBSize()),
       dims_(pir_params.get_dims()), pir_params_(pir_params) {
@@ -88,6 +107,8 @@ PirQuery PirClient::generate_query(std::uint64_t entry_index) {
   while (bits_per_ciphertext < msg_size)
     bits_per_ciphertext *= 2;
 
+  DEBUG_PRINT("bits_per_ciphertext: " << bits_per_ciphertext);
+
   seal::Plaintext plain_query(coeff_count); // we allow 4096 coefficients in the plaintext polynomial to be set as suggested in the paper.
 
   // Algorithm 1 from the OnionPIR Paper
@@ -95,7 +116,6 @@ PirQuery PirClient::generate_query(std::uint64_t entry_index) {
   // expanded ciphertext will be 1
   uint64_t inverse = 0;
   uint64_t plain_modulus = params_.plain_modulus().value(); // example: 16777259
-  DEBUG_PRINT("plain_modulus: " << plain_modulus);
   seal::util::try_invert_uint_mod(bits_per_ciphertext, plain_modulus, inverse);
 
   // Add the first dimension query vector to the query
@@ -119,13 +139,15 @@ PirQuery PirClient::generate_query(std::uint64_t entry_index) {
     inv[k] = result;
   }
 
-  uint128_t pow2[coeff_mod_count][l + 1];
+  // coeff_mod_count many rows, each row is B^0, B^1, ..., B^{l-1} under different moduli
+  // uint128_t pow2[coeff_mod_count][l + 1];
+  uint128_t pow2[coeff_mod_count][l];
   for (int i = 0; i < coeff_mod_count; i++) {
     uint128_t mod = coeff_modulus[i].value();
     uint128_t pow = 1;
-    for (int j = 0; j <= l; j++) {
+    for (int j = 0; j < l; j++) {
       pow2[i][j] = pow;
-      pow = (pow << base_log2) % mod; // multiply by B every time
+      pow = (pow << base_log2) % mod; // multiply by B and take mod every time
     }
   }
 
@@ -138,10 +160,10 @@ PirQuery PirClient::generate_query(std::uint64_t entry_index) {
       // ! pt is a ct_coeff_type *. It points to the current position to be written.
       auto pt = query.data(0) + ptr;  // Meaning is different from the "pt" in the paper.
       for (int j = 0; j < l; j++) {
-        // ? what is this k for?
         for (int k = 0; k < coeff_mod_count; k++) {
           auto pt_offset = k * coeff_count;
           __uint128_t mod = coeff_modulus[k].value();
+          // under this moduli, the coeff is (B^{l - 1}, B^{l - 2}, ..., B^0) / n
           auto coef = pow2[k][l - 1 - j] * inv[k] % mod;
           pt[j + pt_offset] = (pt[j + pt_offset] + coef) % mod;
         }
