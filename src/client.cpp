@@ -113,8 +113,6 @@ PirQuery PirClient::generate_query(std::uint64_t entry_index) {
   while (bits_per_ciphertext < msg_size)
     bits_per_ciphertext *= 2;
 
-  DEBUG_PRINT("bits_per_ciphertext: " << bits_per_ciphertext);
-
   seal::Plaintext plain_query(coeff_count); // we allow 4096 coefficients in the plaintext polynomial to be set as suggested in the paper.
 
   // Algorithm 1 from the OnionPIR Paper

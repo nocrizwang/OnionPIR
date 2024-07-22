@@ -7,7 +7,15 @@
 #include <iostream>
 #include <random>
 
-#include <fstream>
+// Parameters for the PIR scheme
+#define DB_SZ       1 << 15     // Database size <==> Number of plaintexts in the database
+#define NUM_DIM     8           // Number of dimensions of the hypercube
+#define NUM_ENTRIES 1 << 15     // Number of entries in the database
+#define ENTRY_SZ    12000       // Size of each entry in the database
+#define GSW_L       9           // Parameter for GSW scheme. If set to 7 or lower, likely to fail.
+#define GSW_L_KEY   9           // Not sure for now
+
+#define EXPERIMENT_ITERATIONS 10
 
 void print_func_name(std::string func_name) {
 #ifdef _DEBUG
@@ -156,23 +164,16 @@ void test_external_product() {
 void test_pir() {
   print_func_name(__FUNCTION__);
 
-  const int experiment_times = 50;
   auto server_time_sum = 0;
   auto client_time_sum = 0;
   
   // setting parameters for PIR scheme
-  // - Database size = 2^15
-  // - Number of dimensions = 8
-  // - Number of entries = 2^15
-  // - Entry size = 12000 bytes
-  // - l = 9  (parameter for GSW scheme)
-  // - l_key = 9 (Not sure for now)
-  PirParams pir_params(1 << 15, 8, 1 << 15, 12000, 9, 9);
+  PirParams pir_params(DB_SZ, NUM_DIM, NUM_ENTRIES, ENTRY_SZ, GSW_L, GSW_L_KEY);
   pir_params.print_values();
   PirServer server(pir_params); // Initialize the server with the parameters
 
 
-  DEBUG_PRINT("Initializing server...");
+  std::cout << "Initializing server..." << std::endl;
   // Data to be stored in the database.
   std::vector<Entry> data(pir_params.get_num_entries());
 
@@ -187,7 +188,7 @@ void test_pir() {
   // DEBUG_PRINT("Initializing client...");
 
   // Run the query process many times.
-  for (int i = 0; i < experiment_times; i++) {
+  for (int i = 0; i < EXPERIMENT_ITERATIONS; i++) {
     srand(time(0)); // reset the seed for the random number generator
     // Initialize the client
     PirClient client(pir_params);
@@ -214,8 +215,8 @@ void test_pir() {
     Entry entry = client.get_entry_from_plaintext(entry_index, decrypted_result[0]);
     auto c_end_time = CURR_TIME;
     
-    std::cout << "Experiment [" << i << "] server time: " << TIME_DIFF(s_start_time, s_end_time) << " ms" << std::endl;
-    // std::cout << "Client Time: " << TIME_DIFF(c_start_time, c_end_time) - TIME_DIFF(s_start_time, s_end_time) << " ms" << std::endl;
+    std::cout << "Experiment [" << i << "]\tServer time: " << TIME_DIFF(s_start_time, s_end_time) << " ms" << std::endl;
+    std::cout << "\t\tClient Time: " << TIME_DIFF(c_start_time, c_end_time) - TIME_DIFF(s_start_time, s_end_time) << " ms" << std::endl;
     // std::cout << "Noise budget left: " << client.get_decryptor()->invariant_noise_budget(result[0]) << std::endl;
 
     server_time_sum += TIME_DIFF(s_start_time, s_end_time);
@@ -233,8 +234,8 @@ void test_pir() {
     PRINT_BAR;
   }
 
-  std::cout << "Average server time: " << server_time_sum / experiment_times << " ms" << std::endl;
-  std::cout << "Average client time: " << client_time_sum / experiment_times << " ms" << std::endl;
+  std::cout << "Average server time: " << server_time_sum / EXPERIMENT_ITERATIONS << " ms" << std::endl;
+  std::cout << "Average client time: " << client_time_sum / EXPERIMENT_ITERATIONS << " ms" << std::endl;
 }
 
 void test_keyword_pir() {
@@ -295,23 +296,14 @@ void test_keyword_pir() {
   nxt:;
   }
 
-  // write the hashed indices to files
-  std::ofstream index1_file("/Users/sam/Desktop/college/CS/Crypto/PIR/keyword_OnionPIR/temp/ind1.txt");
-  std::ofstream index2_file("/Users/sam/Desktop/college/CS/Crypto/PIR/keyword_OnionPIR/temp/ind2.txt");
-
   for (int i = 0; i < num_entries; i++) {
     uint64_t x = keywords[i];
-    index1_file << hasher(x ^ seed1) % table_size << std::endl;
-    index2_file << hasher(x ^ seed2) % table_size << std::endl;
     if (t1[hasher(x ^ seed1) % table_size] == x) {
       cuckoo1[hasher(x ^ seed1) % table_size] = data[i];
     } else {
       cuckoo2[hasher(x ^ seed2) % table_size] = data[i];
     }
   }
-
-  index1_file.close();
-  index2_file.close();
 
   server1.set_database(cuckoo1);
   server2.set_database(cuckoo2);

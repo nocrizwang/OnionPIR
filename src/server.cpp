@@ -178,14 +178,15 @@ std::vector<seal::Ciphertext> PirServer::evaluate_gsw_product(std::vector<seal::
    * Note that we only have a single GSWCiphertext for this selection.
    * Here is the logic:
    * We want to select the correct half of the "result" vector. 
-   * Suppose result = x || y, where x and y are of the same size(block_size).
+   * Suppose result = [x || y], where x and y are of the same size(block_size).
    * If we have RGSW(0), then we want to set result = x, 
    * If we have RGSW(1), then we want to set result = y.
    * The simple formula is: 
    * result = RGSW(b) * (y - x) + x, where "*" is the external product, "+" and "-" are homomorphic operations.
    */
-  std::vector<seal::Ciphertext> result_vector;
   auto block_size = result.size() / 2;
+  std::vector<seal::Ciphertext> result_vector;
+  result_vector.reserve(block_size);
 
   auto ct_poly_size = result[0].size();
   for (int i = 0; i < block_size; i++) {
