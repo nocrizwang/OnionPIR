@@ -18,16 +18,14 @@ PirServer::PirServer(const PirParams &pir_params)
       hashed_key_width_(pir_params_.get_hashed_key_width()) {}
 
 // Fills the database with random data
-void PirServer::gen_data() {
+std::vector<Entry> PirServer::gen_data() {
   std::vector<Entry> data;
   data.reserve(pir_params_.get_num_entries());
-  for (size_t i = 0; i < pir_params_.get_num_entries(); ++i) {
-    data.push_back(Entry(pir_params_.get_entry_size()));
-    for (size_t j = 0; j < pir_params_.get_entry_size(); ++j) {
-      data[i][j] = (rand() % 255);
-    }
+  for (int i = 0; i < pir_params_.get_num_entries(); i++) {
+    data.push_back(generate_entry(i, pir_params_.get_entry_size()));
   }
   set_database(data);
+  return data;
 }
 
 CuckooInitData PirServer::gen_keyword_data(size_t max_iter, uint64_t keyword_seed) {
@@ -175,18 +173,30 @@ PirServer::evaluate_first_dim_delayed_mod(std::vector<seal::Ciphertext> &selecti
 
 std::vector<seal::Ciphertext> PirServer::evaluate_gsw_product(std::vector<seal::Ciphertext> &result,
                                                               GSWCiphertext &selection_cipher) {
+  
+  /**
+   * Note that we only have a single GSWCiphertext for this selection.
+   * Here is the logic:
+   * We want to select the correct half of the "result" vector. 
+   * Suppose result = x || y, where x and y are of the same size(block_size).
+   * If we have RGSW(0), then we want to set result = x, 
+   * If we have RGSW(1), then we want to set result = y.
+   * The simple formula is: 
+   * result = RGSW(b) * (y - x) + x, where "*" is the external product, "+" and "-" are homomorphic operations.
+   */
   std::vector<seal::Ciphertext> result_vector;
   auto block_size = result.size() / 2;
 
+  auto ct_poly_size = result[0].size();
   for (int i = 0; i < block_size; i++) {
-    evaluator_.sub_inplace(result[i], result[i + block_size]);
-    data_gsw.external_product(selection_cipher, result[i], result[0].size(), result[i]);
-    result_vector.push_back(result[i]);
+    evaluator_.sub_inplace(result[i + block_size], result[i]);
+    data_gsw.external_product(selection_cipher, result[i + block_size], ct_poly_size, result[i + block_size]);
+    result_vector.push_back(result[i + block_size]);
   }
 
   for (int j = 0; j < block_size; j++) {
     data_gsw.cyphertext_inverse_ntt(result_vector[j]);
-    evaluator_.add_inplace(result_vector[j], result[j + block_size]);
+    evaluator_.add_inplace(result_vector[j], result[j]);
   }
   return result_vector;
 }
@@ -350,7 +360,7 @@ std::vector<seal::Ciphertext> PirServer::make_query(uint32_t client_id, PirQuery
   std::vector<seal::Ciphertext> result = evaluate_first_dim_delayed_mod(query_vector);
   // DEBUG_PRINT("NOISE budget: " << decryptor_->invariant_noise_budget(result[0]));
 
-  std::cout << "Dim 0 time: " << TIME_DIFF(exp_qry_end, CURR_TIME) << " ms" << std::endl;
+  DEBUG_PRINT("Dim 0 time: " << TIME_DIFF(exp_qry_end, CURR_TIME) << " ms");
 
   int ptr = dims_[0];
   auto l = pir_params_.get_l();
@@ -497,4 +507,14 @@ void PirServer::preprocess_ntt() {
       evaluator_.transform_to_ntt_inplace(*plaintext, context_.first_parms_id());
     }
   }
+}
+
+
+std::vector<Ciphertext> PirServer::get_expanded_queries(PirQuery& query, uint32_t client_id) {
+  return expand_query(client_id, query);
+}
+
+
+std::vector<uint64_t> PirServer::get_dims() const {
+  return dims_;
 }

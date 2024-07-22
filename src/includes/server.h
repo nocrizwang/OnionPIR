@@ -18,10 +18,11 @@ struct CuckooInitData {
 class PirServer {
 public:
   PirServer(const PirParams &pir_params);
-  /*!
-    Replaces the database with random data
-  */
-  void gen_data();
+
+  /**
+   * @brief Generate random data for the server database. Return the generated data for testing purposes.
+   */
+  std::vector<Entry> gen_data();
 
   /**
    * @brief Generate random key-value pairs, configured using hashed_key_width_. 
@@ -35,6 +36,16 @@ public:
    * @param new_db 
    */
   void set_database(std::vector<Entry> &new_db);
+
+
+  /**
+   * @brief Experimenting on the query expansion
+   * 
+   * @param query packed query
+   */
+  std::vector<Ciphertext> get_expanded_queries(PirQuery& query, uint32_t client_id);
+
+  std::vector<uint64_t> get_dims() const;
 
   // Given the client id and a packed client query, this function first unpacks the query, then returns the retrieved encrypted result.
   std::vector<seal::Ciphertext> make_query(uint32_t client_id, PirQuery &&query);

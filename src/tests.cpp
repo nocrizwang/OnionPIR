@@ -156,7 +156,9 @@ void test_external_product() {
 void test_pir() {
   print_func_name(__FUNCTION__);
 
-  const int experiment_times = 1;
+  const int experiment_times = 50;
+  auto server_time_sum = 0;
+  auto client_time_sum = 0;
   
   // setting parameters for PIR scheme
   // - Database size = 2^15
@@ -212,10 +214,12 @@ void test_pir() {
     Entry entry = client.get_entry_from_plaintext(entry_index, decrypted_result[0]);
     auto c_end_time = CURR_TIME;
     
-    DEBUG_PRINT("Server Time: " << TIME_DIFF(s_start_time, s_end_time) << " ms");
-    DEBUG_PRINT("Client Time: " << TIME_DIFF(c_start_time, c_end_time) - TIME_DIFF(s_start_time, s_end_time) << " ms");
-    DEBUG_PRINT("Noise budget left: " << client.get_decryptor()->invariant_noise_budget(result[0]));
+    std::cout << "Experiment [" << i << "] server time: " << TIME_DIFF(s_start_time, s_end_time) << " ms" << std::endl;
+    // std::cout << "Client Time: " << TIME_DIFF(c_start_time, c_end_time) - TIME_DIFF(s_start_time, s_end_time) << " ms" << std::endl;
+    // std::cout << "Noise budget left: " << client.get_decryptor()->invariant_noise_budget(result[0]) << std::endl;
 
+    server_time_sum += TIME_DIFF(s_start_time, s_end_time);
+    client_time_sum += TIME_DIFF(c_start_time, c_end_time) - TIME_DIFF(s_start_time, s_end_time);
     if (entry == data[entry_index]) {
       std::cout << "Success!" << std::endl;
     } else {
@@ -228,6 +232,9 @@ void test_pir() {
     }
     PRINT_BAR;
   }
+
+  std::cout << "Average server time: " << server_time_sum / experiment_times << " ms" << std::endl;
+  std::cout << "Average client time: " << client_time_sum / experiment_times << " ms" << std::endl;
 }
 
 void test_keyword_pir() {

@@ -5,6 +5,7 @@
 #include "seal/util/scalingvariant.h"
 #include <bitset>
 
+#ifdef _DEBUG
 #define PRINT_INT_ARRAY(arr_name, arr, size) \
     do {                                     \
         std::cout << arr_name << ": [";      \
@@ -15,6 +16,11 @@
         }                                    \
         std::cout << "]" << std::endl;       \
     } while (0)
+#endif
+
+#ifdef _BENCHMARK
+#define PRINT_INT_ARRAY(arr_name, arr, size) ;  // do nothing
+#endif
 
 /**
 #include <iomanip>
@@ -155,8 +161,9 @@ PirQuery PirClient::generate_query(std::uint64_t entry_index) {
   int ptr = dims_[0];
   for (int i = 1; i < query_indexes.size(); i++) {  // dimensions
     // we use this if statement to replce the j for loop in Algorithm 1. This is because N_i = 2 for all i > 0
-    // When 1 is requested, we use initial encrypted value of PirQuery.
-    if (query_indexes[i] == 0) {
+    // When 0 is requested, we use initial encrypted value of PirQuery query, where the coefficients decrypts to 0. 
+    // When 1 is requested, we add special values to the coefficients of the query so that they decrypts to correct GSW(1) values.
+    if (query_indexes[i] == 1) {
       // ! pt is a ct_coeff_type *. It points to the current position to be written.
       auto pt = query.data(0) + ptr;  // Meaning is different from the "pt" in the paper.
       for (int j = 0; j < l; j++) {
