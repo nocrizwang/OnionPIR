@@ -51,6 +51,14 @@ public:
   std::vector<seal::Ciphertext> make_query(uint32_t client_id, PirQuery &&query);
   std::vector<seal::Ciphertext> make_query_delayed_mod(uint32_t client_id, PirQuery query);
   std::vector<seal::Ciphertext> make_query_regular_mod(uint32_t client_id, PirQuery query);
+
+  /**
+   * @brief A clever way to evaluate the external product for second to last dimensions. 
+   * 
+   * @param result The BFV ciphertexts
+   * @param selection_cipher A single RGSW(b) ciphertext, where b \in {0, 1}. 0 to get the first half of the result, 1 to get the second half.
+   * @return std::vector<seal::Ciphertext> 
+   */
   std::vector<seal::Ciphertext> evaluate_gsw_product(std::vector<seal::Ciphertext> &result,
                                                      GSWCiphertext &selection_cipher);
   void set_client_galois_key(uint32_t client_id, seal::GaloisKeys client_key);

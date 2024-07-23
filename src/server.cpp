@@ -190,14 +190,14 @@ std::vector<seal::Ciphertext> PirServer::evaluate_gsw_product(std::vector<seal::
 
   auto ct_poly_size = result[0].size();
   for (int i = 0; i < block_size; i++) {
-    evaluator_.sub_inplace(result[i + block_size], result[i]);
-    data_gsw.external_product(selection_cipher, result[i + block_size], ct_poly_size, result[i + block_size]);
-    result_vector.push_back(result[i + block_size]);
+    evaluator_.sub_inplace(result[i + block_size], result[i]);  // y - x
+    data_gsw.external_product(selection_cipher, result[i + block_size], ct_poly_size, result[i + block_size]);  // b * (y - x)
+    result_vector.emplace_back(result[i + block_size]); // hopefully emplace_back is faster than push_back
   }
 
   for (int j = 0; j < block_size; j++) {
     data_gsw.cyphertext_inverse_ntt(result_vector[j]);
-    evaluator_.add_inplace(result_vector[j], result[j]);
+    evaluator_.add_inplace(result_vector[j], result[j]);  // 
   }
   return result_vector;
 }
@@ -206,35 +206,34 @@ std::vector<seal::Ciphertext> PirServer::expand_query(uint32_t client_id,
                                                       seal::Ciphertext ciphertext) {
   seal::EncryptionParameters params = pir_params_.get_seal_params();
   std::vector<Ciphertext> expanded_query;
-  int poly_degree = params.poly_modulus_degree();
+  int poly_degree = params.poly_modulus_degree();   // n in paper. The degree of the polynomial
 
-  // Expand ciphertext into 2^expansion_factor individual ciphertexts (number of
-  // bits)
-  int exp = dims_[0] + pir_params_.get_l() * (dims_.size() - 1);
+  // Expand ciphertext into 2^expansion_factor individual ciphertexts (number of bits)
+  int num_cts = dims_[0] + pir_params_.get_l() * (dims_.size() - 1);  // This aligns with the number of coeff packed by the client.
 
-  int expansion_factor = 0;
-
-  while ((1 << expansion_factor) < exp) { // to the power of 2 over exp.
+  int expansion_factor = 0; // integer log2(num_cts) 
+  while ((1 << expansion_factor) < num_cts) {
     expansion_factor++;
   }
-
   std::vector<Ciphertext> cipher_vec((size_t)pow(2, expansion_factor));
-  cipher_vec[0] = ciphertext;
+  cipher_vec[0] = ciphertext;   // c_0 = c in paper
 
-  for (size_t a = 0; a < expansion_factor; a++) {
+  const auto& client_galois_key = client_galois_keys_[client_id]; // used for substitution
 
-    int expansion_const = pow(2, a);
+  for (size_t a = 0; a < expansion_factor; a++) {   // corresponds to i in paper
+
+    int expansion_const = pow(2, a);  // 2^a = 2^(i - 1) in paper
 
     for (size_t b = 0; b < expansion_const; b++) {
-      Ciphertext cipher0 = cipher_vec[b];
+      Ciphertext cipher0 = cipher_vec[b];   // c_b in paper
       evaluator_.apply_galois_inplace(cipher0, poly_degree / expansion_const + 1,
-                                      client_galois_keys_[client_id]);
+                                      client_galois_key); // Subs(c_b, k) in paper. k = poly_degree / expansion_const + 1 here.
       Ciphertext cipher1;
       utils::shift_polynomial(params, cipher0, cipher1, -expansion_const);
       utils::shift_polynomial(params, cipher_vec[b], cipher_vec[b + expansion_const],
-                              -expansion_const);
-      evaluator_.add_inplace(cipher_vec[b], cipher0);
-      evaluator_.sub_inplace(cipher_vec[b + expansion_const], cipher1);
+                              -expansion_const);  // TODO: understand this
+      evaluator_.add_inplace(cipher_vec[b], cipher0);   // c_{2b} = c_b + Subs(c_b, k)
+      evaluator_.sub_inplace(cipher_vec[b + expansion_const], cipher1); // c_{2b+1} = c_b - Subs(c_b, k)
     }
   }
 
@@ -352,28 +351,29 @@ std::vector<Key> cuckoo_insert(uint64_t seed1, uint64_t seed2, size_t swap_limit
 
 std::vector<seal::Ciphertext> PirServer::make_query(uint32_t client_id, PirQuery &&query) {
 
+  // Record sum of each types of time
+  int gsw_gen_time = 0;
+  int ext_prod_time = 0;
+
   // Query expansion
   auto exp_qry_start = CURR_TIME;
   std::vector<seal::Ciphertext> query_vector = expand_query(client_id, query);
   auto exp_qry_end = CURR_TIME;
-  DEBUG_PRINT("Query expansion time: " << TIME_DIFF(exp_qry_start, exp_qry_end) << " ms");
 
   std::vector<seal::Ciphertext> result = evaluate_first_dim_delayed_mod(query_vector);
-  // DEBUG_PRINT("NOISE budget: " << decryptor_->invariant_noise_budget(result[0]));
-
-  DEBUG_PRINT("Dim 0 time: " << TIME_DIFF(exp_qry_end, CURR_TIME) << " ms");
+  auto first_dim_end = CURR_TIME;
+  DEBUG_PRINT("NOISE budget after first dimension: " << decryptor_->invariant_noise_budget(result[0]));
 
   int ptr = dims_[0];
   auto l = pir_params_.get_l();
   for (int i = 1; i < dims_.size(); i++) {
-    auto gsw_gen_start = CURR_TIME;
-    
-    // ? Can we batch this operation outside the loop?
     std::vector<seal::Ciphertext> lwe_vector; // BFV ciphertext, size l * 2. This vector will be reconstructed as a single RGSW ciphertext.
     for (int k = 0; k < l; k++) {
       lwe_vector.push_back(query_vector[ptr]);
       ptr += 1;
     }
+
+    auto gsw_gen_start = CURR_TIME;
     // Converting the BFV ciphertext to GSW ciphertext
     GSWCiphertext gsw;
     key_gsw.query_to_gsw(lwe_vector, client_gsw_keys_[client_id], gsw);
@@ -386,7 +386,15 @@ std::vector<seal::Ciphertext> PirServer::make_query(uint32_t client_id, PirQuery
 
     DEBUG_PRINT("Dim " << i << " GSW generation time: \t" << TIME_DIFF(gsw_gen_start, gsw_gen_end) << "\tms");
     DEBUG_PRINT("Dim " << i << " external product time: \t" << TIME_DIFF(gsw_gen_end, ext_prod_end) << "\tms\n");
+    gsw_gen_time += TIME_DIFF(gsw_gen_start, gsw_gen_end);
+    ext_prod_time += TIME_DIFF(gsw_gen_end, ext_prod_end);
   }
+
+  PRINT_BAR;
+  DEBUG_PRINT("Query expansion time: " << TIME_DIFF(exp_qry_start, exp_qry_end) << " ms");
+  DEBUG_PRINT("Dim 0 time: " << TIME_DIFF(exp_qry_end, first_dim_end) << " ms");
+  DEBUG_PRINT("Total GSW generation time: " << gsw_gen_time << " ms");
+  DEBUG_PRINT("Total External product time: " << ext_prod_time << " ms");
 
   // modulus switching so to reduce the response size.
   evaluator_.mod_switch_to_next_inplace(result[0]); // result.size() == 1.

@@ -22,23 +22,25 @@
 #define PRINT_INT_ARRAY(arr_name, arr, size) ;  // do nothing
 #endif
 
-/**
+
 #include <iomanip>
-void print_uint128(__uint128_t value) {
+std::string uint128_to_string(__uint128_t value) {
     // Split the 128-bit value into two 64-bit parts
     uint64_t high = value >> 64;
     uint64_t low = static_cast<uint64_t>(value);
 
+    std::ostringstream oss;
+
     // Print the high part, if it's non-zero, to avoid leading zeros
     if (high != 0) {
-        std::cout << high;
-        std::cout << std::setw(20) << std::setfill('0') << low;
+        oss << high;
+        oss << std::setw(20) << std::setfill('0') << low;
     } else {
-        std::cout << low;
+        oss << low;
     }
-    std::cout << std::endl;
+    return oss.str();
 }
- */
+
 
 
 PirClient::PirClient(const PirParams &pir_params)
@@ -168,8 +170,9 @@ PirQuery PirClient::generate_query(std::uint64_t entry_index) {
         for (int k = 0; k < coeff_mod_count; k++) {
           auto pt_offset = k * coeff_count;
           __uint128_t mod = coeff_modulus[k].value();
-          // under this moduli, the coeff is (B^{l - 1}, B^{l - 2}, ..., B^0) / n
-          auto coef = pow2[k][l - 1 - j] * inv[k] % mod;
+          // under this moduli, the coeff is (B^{l - 1}, B^{l - 2}, ..., B^0) / bits_per_ciphertext
+          // auto coef = pow2[k][l - 1 - j] * inv[k] % mod;
+          auto coef = pow2[k][j] * inv[k] % mod;
           pt[j + pt_offset] = (pt[j + pt_offset] + coef) % mod;
         }
       }

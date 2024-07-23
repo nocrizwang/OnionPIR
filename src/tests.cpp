@@ -15,7 +15,7 @@
 #define GSW_L       9           // Parameter for GSW scheme. If set to 7 or lower, likely to fail.
 #define GSW_L_KEY   9           // Not sure for now
 
-#define EXPERIMENT_ITERATIONS 10
+#define EXPERIMENT_ITERATIONS 1
 
 void print_func_name(std::string func_name) {
 #ifdef _DEBUG
@@ -222,9 +222,11 @@ void test_pir() {
     server_time_sum += TIME_DIFF(s_start_time, s_end_time);
     client_time_sum += TIME_DIFF(c_start_time, c_end_time) - TIME_DIFF(s_start_time, s_end_time);
     if (entry == data[entry_index]) {
-      std::cout << "Success!" << std::endl;
+      // print a green success message
+      std::cout << "\033[1;32mSuccess!\033[0m" << std::endl;
     } else {
-      std::cout << "Failure!" << std::endl;
+      // print a red failure message
+      std::cout << "\033[1;31mFailure!\033[0m" << std::endl;
 
       std::cout << "Result:\t";
       print_entry(entry);

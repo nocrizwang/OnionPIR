@@ -123,7 +123,7 @@ void GSWEval::decomp_rlwe(seal::Ciphertext const &ct, std::vector<std::vector<ui
     memcpy(data.data(), poly_ptr, coeff_count * coeff_mod_count * sizeof(uint64_t));
     rns_base->compose_array(data.data(), coeff_count, pool);
 
-    for (int p = l - 1; p >= 0; p--) {
+    for (int p = 0; p < l; p++) {
       std::vector<uint64_t> row = data;
       const int shift_amount = p * base_log2;
 
@@ -200,7 +200,7 @@ void GSWEval::encrypt_plain_to_gsw(std::vector<uint64_t> const &plaintext,
   }
 
   for (int poly_id = 0; poly_id <= 1; poly_id++) {
-    for (int i = l - 1; i >= 0; i--) {
+    for (int i = 0; i < l; i++) {
       seal::Ciphertext cipher;
       encryptor.encrypt_zero_symmetric(cipher);
 
