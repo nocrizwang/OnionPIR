@@ -9,6 +9,7 @@ void run_query_test() {
 
   // set up parameters
   PirParams pir_params{DB_SZ, NUM_DIM,NUM_ENTRIES, ENTRY_SZ, GSW_L, GSW_L_KEY};
+  pir_params.print_values();
 
   // Initialize the client
   srand(time(0));
@@ -45,14 +46,11 @@ void run_query_test() {
   size_t gsw_l = pir_params.get_l();
   // for the rest dimensions, we read l plaintexts for each "GSW" plaintext, and reconstruct the using these l values.
   for (size_t dim_idx = 1; dim_idx < dims.size(); ++dim_idx) {
-    std::vector<seal::Plaintext> BFV_vector;
     std::cout << "Dimension " << dim_idx << ": ";
     for (int k = 0; k < gsw_l; k++) {
-      std::cout <<decrypted_query[ptr + k].to_string() << " ";
-      BFV_vector.push_back( decrypted_query[ptr + k] );
+      std::cout << "0x" << decrypted_query[ptr + k].to_string() << " ";
     }
     std::cout << std::endl;
-    // reconstruct 
     ptr += gsw_l;
   }
 }
