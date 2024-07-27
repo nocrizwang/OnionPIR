@@ -34,3 +34,8 @@ void utils::shift_polynomial(seal::EncryptionParameters &params, seal::Ciphertex
     }
   }
 }
+
+
+void negate_poly_inplace(seal::Plaintext &plain) {
+  std::cout << "TODO" << std::endl;
+}

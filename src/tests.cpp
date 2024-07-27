@@ -4,6 +4,7 @@
 #include "seal/util/scalingvariant.h"
 #include "server.h"
 #include "utils.h"
+#include <cassert>
 #include <iostream>
 #include <random>
 
@@ -38,6 +39,7 @@ void run_tests() {
   // test_keyword_pir(); // two server version
   // test_cuckoo_keyword_pir(); // single server version
 
+  // test_negate_poly();
   PRINT_BAR;
   DEBUG_PRINT("Tests finished");
 }
@@ -426,4 +428,20 @@ void test_cuckoo_keyword_pir() {
   }
 
 
+}
+
+
+
+void test_negate_poly() {
+  print_func_name(__FUNCTION__);
+  PirParams pir_params(256, 2, 20000, 5, 5, 5);
+  auto context_ = seal::SEALContext(pir_params.get_seal_params());
+  auto evaluator_ = seal::Evaluator(context_);
+  auto keygen_ = seal::KeyGenerator(context_);
+  auto secret_key_ = keygen_.secret_key();
+
+  seal::Plaintext plain_secret = secret_key_.data();
+  seal::Plaintext plain_secret_copy = plain_secret;
+
+  DEBUG_PRINT("TODO");
 }

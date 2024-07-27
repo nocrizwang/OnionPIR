@@ -10,3 +10,4 @@ void test_external_product();
 void test_keyword_pir();
 void test_cuckoo_keyword_pir();
 void test_pir();
+void test_negate_poly();

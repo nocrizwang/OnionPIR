@@ -202,6 +202,7 @@ std::vector<seal::Ciphertext> PirServer::evaluate_gsw_product(std::vector<seal::
   return result_vector;
 }
 
+// TODO: possible optimization: ciphertext use reference
 std::vector<seal::Ciphertext> PirServer::expand_query(uint32_t client_id,
                                                       seal::Ciphertext ciphertext) {
   seal::EncryptionParameters params = pir_params_.get_seal_params();

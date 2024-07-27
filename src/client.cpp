@@ -170,12 +170,8 @@ PirQuery PirClient::generate_query(std::uint64_t entry_index) {
         for (int k = 0; k < coeff_mod_count; k++) {
           auto pt_offset = k * coeff_count;
           __uint128_t mod = coeff_modulus[k].value();
-          // under this moduli, the coeff is (B^{l - 1}, B^{l - 2}, ..., B^0) / bits_per_ciphertext
-          // auto coef = pow2[k][l - 1 - j] * inv[k] % mod;
-          
           // the coeff is (B^0, B^1, ..., B^{l-1}) / bits_per_ciphertext
           auto coef = pow2[k][j] * inv[k] % mod;
-
           pt[j + pt_offset] = (pt[j + pt_offset] + coef) % mod;
         }
       }

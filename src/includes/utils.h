@@ -88,3 +88,7 @@ void negacyclic_shift_poly_coeffmod(seal::util::ConstCoeffIter poly, size_t coef
 void shift_polynomial(seal::EncryptionParameters &params, seal::Ciphertext &encrypted,
                       seal::Ciphertext &destination, size_t index);
 } // namespace utils
+
+
+// Inplace calculate the additive inverse of a seal::Plaintext
+void negate_poly_inplace(seal::Plaintext &plain);

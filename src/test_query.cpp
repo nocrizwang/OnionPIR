@@ -53,4 +53,20 @@ void run_query_test() {
     std::cout << std::endl;
     ptr += gsw_l;
   }
+
+
+  // PRINT_BAR;
+
+  // // Solve for the first dimension 
+  // std::vector<seal::Ciphertext> after_first = server.help_eval_first_dim(expanded_query);
+  // std::vector<seal::Plaintext> dec_af = client.decrypt_result(after_first);
+
+  // for (size_t i = 0; i < dec_af.size(); i++) {
+  //   if (dec_af[i].is_zero() == false) {
+  //     DEBUG_PRINT("After first dimension[" << i << "]: " << dec_af[i].to_string());
+  //   }
+  // }
+
+
+
 }
