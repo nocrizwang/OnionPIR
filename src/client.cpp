@@ -23,26 +23,6 @@
 #endif
 
 
-#include <iomanip>
-std::string uint128_to_string(__uint128_t value) {
-    // Split the 128-bit value into two 64-bit parts
-    uint64_t high = value >> 64;
-    uint64_t low = static_cast<uint64_t>(value);
-
-    std::ostringstream oss;
-
-    // Print the high part, if it's non-zero, to avoid leading zeros
-    if (high != 0) {
-        oss << high;
-        oss << std::setw(20) << std::setfill('0') << low;
-    } else {
-        oss << low;
-    }
-    return oss.str();
-}
-
-
-
 PirClient::PirClient(const PirParams &pir_params)
     : params_(pir_params.get_seal_params()), DBSize_(pir_params.get_DBSize()),
       dims_(pir_params.get_dims()), pir_params_(pir_params) {
@@ -168,11 +148,11 @@ PirQuery PirClient::generate_query(std::uint64_t entry_index) {
       auto pt = query.data(0) + ptr;  // Meaning is different from the "pt" in the paper.
       for (int j = 0; j < l; j++) {
         for (int k = 0; k < coeff_mod_count; k++) {
-          auto pt_offset = k * coeff_count;
+          auto pad = k * coeff_count;   // We use two moduli for the same gadget value. They are apart by coeff_count.
           __uint128_t mod = coeff_modulus[k].value();
           // the coeff is (B^0, B^1, ..., B^{l-1}) / bits_per_ciphertext
           auto coef = pow2[k][j] * inv[k] % mod;
-          pt[j + pt_offset] = (pt[j + pt_offset] + coef) % mod;
+          pt[j + pad] = (pt[j + pad] + coef) % mod;
         }
       }
     }

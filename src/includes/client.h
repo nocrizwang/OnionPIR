@@ -54,6 +54,9 @@ private:
       Gets the query indexes for a given plaintext
   */
   std::vector<size_t> get_query_indexes(size_t plaintext_index);
+
+  friend class PirTest;
+
 };
 
 /**

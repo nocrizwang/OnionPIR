@@ -37,6 +37,20 @@ It is not because the values are not filled in, but is because the first $2/3$ v
 
 
 
+### Strange but working code design
+
+There is a reason why we have to "first encrypt the initial plaintext then add RGSW gadgets": RGSW gadget uses the ciphertext modulus for coefficients, which is larger than the plaintext modulus. This is related to how BFV uses these coefficients. One must dive into SEAL to understand how this works. 
+
+One way to learn if the current code is working exactly as we expected is to try to decrypt the GSW ciphertext and check if the gadget looks the same as in the paper.
+
+
+
+
+
+
+
+
+
 ---
 
 ### Default PIR param

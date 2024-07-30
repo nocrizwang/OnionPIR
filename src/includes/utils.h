@@ -92,3 +92,6 @@ void shift_polynomial(seal::EncryptionParameters &params, seal::Ciphertext &encr
 
 // Inplace calculate the additive inverse of a seal::Plaintext
 void negate_poly_inplace(seal::Plaintext &plain);
+
+// Convert a 128-bit unsigned integer to a string
+std::string uint128_to_string(__uint128_t value);
