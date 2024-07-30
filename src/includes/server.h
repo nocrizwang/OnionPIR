@@ -37,14 +37,6 @@ public:
    */
   void set_database(std::vector<Entry> &new_db);
 
-
-  /**
-   * @brief Experimenting on the query expansion
-   * 
-   * @param query packed query
-   */
-  std::vector<Ciphertext> get_expanded_queries(PirQuery& query, uint32_t client_id);
-
   std::vector<uint64_t> get_dims() const;
 
   // Given the client id and a packed client query, this function first unpacks the query, then returns the retrieved encrypted result.
@@ -65,6 +57,8 @@ public:
   void set_client_gsw_key(uint32_t client_id, GSWCiphertext &&gsw_key);
 
   seal::Decryptor *decryptor_;
+
+  friend class PirTest;
 
 private:
   uint64_t DBSize_;

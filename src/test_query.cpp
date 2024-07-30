@@ -7,7 +7,7 @@
 
 void run_query_test() {
   PirTest test;
-  // test.gen_and_expand();
+  test.gen_and_expand();
   test.enc_then_add();
 }
 
@@ -24,6 +24,7 @@ std::unique_ptr<PirServer> PirTest::prepare_server(bool init_db, PirParams &pir_
 
 
 void PirTest::gen_and_expand() {
+  PRINT_BAR;
   DEBUG_PRINT("Running: " << __FUNCTION__);
 
   // ======================== Initialize the client and server
@@ -40,7 +41,7 @@ void PirTest::gen_and_expand() {
 
 
   // ======================== server receives the query and expand it
-  auto expanded_query = server->get_expanded_queries(query, client_id);  // a vector of BFV ciphertexts
+  auto expanded_query = server->expand_query(client_id, query);  // a vector of BFV ciphertexts
   std::vector<uint64_t> dims = server->get_dims();
 
   // ======================== client decrypts the query vector and interprets the result
@@ -56,7 +57,7 @@ void PirTest::gen_and_expand() {
   size_t gsw_l = pir_params.get_l();
   // for the rest dimensions, we read l plaintexts for each "GSW" plaintext, and reconstruct the using these l values.
   for (size_t dim_idx = 1; dim_idx < dims.size(); ++dim_idx) {
-    std::cout << "Dimension " << dim_idx << ": ";
+    std::cout << "Dim " << dim_idx << ": ";
     for (int k = 0; k < gsw_l; k++) {
       std::cout << "0x" << decrypted_query[ptr + k].to_string() << " ";
     }
@@ -68,6 +69,7 @@ void PirTest::gen_and_expand() {
 }
 
 void PirTest::enc_then_add() {
+  PRINT_BAR;
   DEBUG_PRINT("Running: " << __FUNCTION__);
 
   // ======================== Initialize the client and server
@@ -112,6 +114,6 @@ void PirTest::enc_then_add() {
 
   // ======================== Decrypt the query and interpret the result
   std::vector<seal::Plaintext> decrypted_query = client.decrypt_result({query});
-  std::cout << "\n Decrypted in hex: " << decrypted_query[0].to_string() << std::endl;
+  std::cout << "Decrypted in hex: " << decrypted_query[0].to_string() << std::endl;
   
 }

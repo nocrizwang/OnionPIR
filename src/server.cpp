@@ -520,11 +520,6 @@ void PirServer::preprocess_ntt() {
 }
 
 
-std::vector<Ciphertext> PirServer::get_expanded_queries(PirQuery& query, uint32_t client_id) {
-  return expand_query(client_id, query);
-}
-
-
 std::vector<uint64_t> PirServer::get_dims() const {
   return dims_;
 }
