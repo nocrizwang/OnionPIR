@@ -2,13 +2,18 @@
 #include "utils.h"
 #include "seal/util/uintarithmod.h"
 
+#include <fstream>
+
 #define EXPERIMENT_ITER 1
+
+const size_t entry_idx = 8933; // fixed index for testing
 
 
 void run_query_test() {
   PirTest test;
-  test.gen_and_expand();
-  test.enc_then_add();
+  // test.gen_and_expand();
+  // test.enc_then_add();
+  test.gen_query_test();
 }
 
 std::unique_ptr<PirServer> PirTest::prepare_server(bool init_db, PirParams &pir_params, PirClient &client, const int client_id) {
@@ -35,7 +40,7 @@ void PirTest::gen_and_expand() {
   std::unique_ptr<PirServer> server = prepare_server(false, pir_params, client, client_id);
 
   // ======================== Start generating the query
-  size_t entry_idx = rand() % pir_params.get_num_entries();
+  // size_t entry_idx = rand() % pir_params.get_num_entries();
   DEBUG_PRINT("Client ID: " << client_id << " Entry index: " << entry_idx);
   PirQuery query = client.generate_query(entry_idx);  // a single BFV ciphertext
 
@@ -45,12 +50,15 @@ void PirTest::gen_and_expand() {
   std::vector<uint64_t> dims = server->get_dims();
 
   // ======================== client decrypts the query vector and interprets the result
-  std::vector<seal::Plaintext> decrypted_query = client.decrypt_result(expanded_query);
+  std::vector<seal::Plaintext> decrypted_query = client.decrypt_result({query});
+  std::cout << "Raw decrypted in hex: " << decrypted_query[0].to_string() << std::endl;
+
+  std::vector<seal::Plaintext> dec_expanded = client.decrypt_result(expanded_query);
 
   // check the first dimension is the first dims[0] plaintext in decrypted_query
   for (size_t i = 0; i < dims[0]; i++) {
-    if (decrypted_query[i].is_zero() == false) {
-      DEBUG_PRINT("Dimension 0[" << i << "]: " << decrypted_query[i].to_string());
+    if (dec_expanded[i].is_zero() == false) {
+      DEBUG_PRINT("Dimension 0[" << i << "]: " << dec_expanded[i].to_string());
     }
   }
   int ptr = dims[0];
@@ -59,7 +67,7 @@ void PirTest::gen_and_expand() {
   for (size_t dim_idx = 1; dim_idx < dims.size(); ++dim_idx) {
     std::cout << "Dim " << dim_idx << ": ";
     for (int k = 0; k < gsw_l; k++) {
-      std::cout << "0x" << decrypted_query[ptr + k].to_string() << " ";
+      std::cout << "0x" << dec_expanded[ptr + k].to_string() << " ";
     }
     std::cout << std::endl;
     ptr += gsw_l;
@@ -80,6 +88,10 @@ void PirTest::enc_then_add() {
   std::unique_ptr<PirServer> server = prepare_server(false, pir_params, client, client_id);
 
   // ======================== we try a simpler version of the client generate_query
+  size_t plaintext_index = client.get_database_plain_index(entry_idx); // fixed index for testing
+  std::vector<size_t> query_indexes = client.get_query_indexes(plaintext_index);
+  PRINT_INT_ARRAY("query_indexes", query_indexes.data(), query_indexes.size());
+
   size_t coeff_count = pir_params.get_seal_params().poly_modulus_degree();
   seal::Plaintext plain_query{coeff_count};
 
@@ -92,6 +104,21 @@ void PirTest::enc_then_add() {
   auto base_log2 = pir_params.get_base_log2();
   auto l = pir_params.get_l();
 
+  // The number of bits required for the first dimension is equal to the size of the first dimension
+  uint64_t msg_size = client.dims_[0] + client.pir_params_.get_l() * (client.dims_.size() - 1);
+  uint64_t bits_per_ciphertext = 1; // padding msg_size to the next power of 2
+
+  while (bits_per_ciphertext < msg_size)
+    bits_per_ciphertext *= 2;
+
+  // The following two for-loops calculates the powers for GSW gadgets.
+  __uint128_t inv[coeff_mod_count];
+  for (int k = 0; k < coeff_mod_count; k++) {
+    uint64_t result;
+    seal::util::try_invert_uint_mod(bits_per_ciphertext, coeff_modulus[k], result);
+    inv[k] = result;
+  }
+
   uint128_t pow2[coeff_mod_count][l];
   for (int i = 0; i < coeff_mod_count; i++) {
     uint128_t mod = coeff_modulus[i].value();
@@ -102,18 +129,117 @@ void PirTest::enc_then_add() {
     }
   }
 
-  auto pt = query.data(0);
-  for (int j = 0; j < l; ++j) {
-    for (int k = 0; k < coeff_mod_count; ++k) {
-      auto pt_offset = k * coeff_count;
-      uint128_t mod = coeff_modulus[k].value();
-      uint128_t coef = pow2[k][j]; // no inv here.
-      pt[j + pt_offset] = (pt[j + pt_offset] + coef) % mod;
+  int ptr = client.dims_[0];
+  for (int i = 1; i < query_indexes.size(); i++) {  // dimensions
+    // we use this if statement to replce the j for loop in Algorithm 1. This is because N_i = 2 for all i > 0
+    // When 0 is requested, we use initial encrypted value of PirQuery query, where the coefficients decrypts to 0. 
+    // When 1 is requested, we add special values to the coefficients of the query so that they decrypts to correct GSW(1) values.
+    if (query_indexes[i] == 1) {
+      // ! pt is a ct_coeff_type *. It points to the current position to be written.
+      auto pt = query.data(0) + ptr;  // Meaning is different from the "pt" in the paper.
+      for (int j = 0; j < l; j++) {
+        for (int k = 0; k < coeff_mod_count; k++) {
+          auto pad = k * coeff_count;   // We use two moduli for the same gadget value. They are apart by coeff_count.
+          __uint128_t mod = coeff_modulus[k].value();
+          // the coeff is (B^0, B^1, ..., B^{l-1}) / bits_per_ciphertext
+          auto coef = pow2[k][j] * inv[k] % mod;
+          pt[j + pad] = (pt[j + pad] + coef) % mod;
+          if (i == query_indexes.size() - 1) {
+            DEBUG_PRINT("accessing: " << ptr + j + pad << " value: " << pt[j + pad]);
+          }
+        }
+      }
     }
+    ptr += l;
   }
+
+
+
+  // auto pt = query.data(0);
+  // for (int j = 0; j < l; ++j) {
+  //   for (int k = 0; k < coeff_mod_count; ++k) {
+  //     auto pt_offset = k * coeff_count;
+  //     uint128_t mod = coeff_modulus[k].value();
+  //     uint128_t coef = pow2[k][j]; // no inv here.
+  //     pt[j + pt_offset] = (pt[j + pt_offset] + coef) % mod;
+  //   }
+  // }
 
   // ======================== Decrypt the query and interpret the result
   std::vector<seal::Plaintext> decrypted_query = client.decrypt_result({query});
   std::cout << "Decrypted in hex: " << decrypted_query[0].to_string() << std::endl;
   
+}
+
+
+// distribution test
+void PirTest::gen_query_test() {
+  PRINT_BAR;
+  DEBUG_PRINT("Running: " << __FUNCTION__);
+
+  // ======================== Initialize the client and server
+  PirParams pir_params{DB_SZ, NUM_DIM, NUM_ENTRIES, ENTRY_SZ, GSW_L, GSW_L_KEY};
+  PirClient client(pir_params);
+  srand(time(0));
+  const int client_id = rand();
+  std::unique_ptr<PirServer> server = prepare_server(false, pir_params, client, client_id);
+
+
+  // ======================== Directly use the client to generate the query many times
+  size_t experiment_iter = 50000;
+
+  // open /Users/sam/Desktop/code_test/temp_data/first_dim_enc_coef.csv
+  std::ofstream file;
+  std::ofstream file2;
+  std::ofstream file3;
+  file.open("/Users/sam/Desktop/code_test/temp_data/first_dim_enc_coef.csv");
+  file2.open("/Users/sam/Desktop/code_test/temp_data/rest_dim_enc_coef.csv");
+  file3.open("/Users/sam/Desktop/code_test/temp_data/zero_enc_coef.csv");
+
+  // First we test if the first coefficients looks random
+  for (int i = 0; i < experiment_iter; ++i) {
+    std::cout << "i : " << i << " ";
+    PirQuery query = client.generate_query(entry_idx); 
+    // PirQuery query = client.generate_query(0);
+
+    // iterate over the first 256 coefficients
+    // Each line has 256 comma separated values
+    auto pt = query.data(0);
+    // from 310 to 318, we have 9 GSW gadgets. Inspect these values.
+    for (int i = 310; i < 319; i++) {
+      // std::cout << "0x" << std::hex << pt[i] << " ";
+      file2 << "0x" << std::hex << pt[i];
+      if (i < 318) {
+        file2 << ", ";
+      }
+      else {
+        file2 << std::endl;
+      }
+    }
+  }
+
+  // we generate many zero queries to see if the distributions are the same.
+  for (int i = 0; i < experiment_iter; ++i) {
+    // the client should query for the first entry. For the "rest dimensions", the query index are all 0.
+    std::cout << "i : " << i << " ";
+    PirQuery query = client.generate_query(0);
+    auto pt = query.data(0);
+    client.encryptor_->encrypt_zero_symmetric(query);
+
+    // we query the same 310 to 318 coefficients
+    for (int i = 310; i < 319; i++) {
+      // std::cout << "0x" << std::hex << pt[i] << " ";
+      file3 << "0x" << std::hex << pt[i];
+      if (i < 318) {
+        file3 << ", ";
+      }
+      else {
+        file3 << std::endl;
+      }
+    }
+  }
+
+  file.close();
+  file2.close();
+  file3.close();
 }

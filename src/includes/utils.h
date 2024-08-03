@@ -2,6 +2,25 @@
 #include "seal/seal.h"
 #include <iostream>
 
+
+#ifdef _DEBUG
+#define PRINT_INT_ARRAY(arr_name, arr, size) \
+    do {                                     \
+        std::cout << arr_name << ": [";      \
+        for (int i = 0; i < size; ++i) {     \
+            std::cout << arr[i];             \
+            if (i < size - 1)                \
+                std::cout << ", ";           \
+        }                                    \
+        std::cout << "]" << std::endl;       \
+    } while (0)
+#endif
+
+#ifdef _BENCHMARK
+#define PRINT_INT_ARRAY(arr_name, arr, size) ;  // do nothing
+#endif
+
+
 template <typename T> std::string to_string(T x) {
   std::string ret;
   if (x == 0) {

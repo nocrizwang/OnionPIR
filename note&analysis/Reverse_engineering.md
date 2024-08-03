@@ -68,6 +68,35 @@ The **rest dimensions** are similar: for each $\mathrm{BFV}(b / B^k), 1 \leq k \
     <figcaption>  </figcaption>
   </figure>
 </center>
+#### Second Though:
+
+A huge flaw: we cannot actually use $B^k$ in plaintext. Therefore, it is actually invalid to write $\operatorname{BFV}(b / B^k)$. 
+
+<center>
+  <figure>
+    <img src=" https://raw.githubusercontent.com/helloboyxxx/images-for-notes/master/uPic/image-20240730222740621.png " style="width:50%;" />
+    <figcaption> Onion-Ring ORAM </figcaption>
+  </figure>
+</center>
+
+However, using SEAL there is a way to somehow encode $B^k$ in a BFV ciphertext.
+
+```
+// SEAL/native/examples/1_bfv_basics.cpp
+For example, if poly_modulus_degree is 4096, the coeff_modulus could consist of three 36-bit primes (108 bits).
+```
+
+
+
+
+
+
+
+
+
+
+
+
 
 ### Question: 
 
@@ -75,9 +104,45 @@ Do we really need the trick for not packing the first $l$ rows of RGSW ciphertex
 
 Is algorithm 3 in Onion Ring ORAM buggy? Can use use other input values besides $\mathbb{B}_n[X]$?
 
-
-
 I am not 100% sure about whether BFV is working on a polynomial ring. Only know definition of TLWE.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+### TODO: 
+
+Do some simple trick to test this GSW(0)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

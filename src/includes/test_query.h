@@ -24,4 +24,6 @@ class PirTest {
 
     // An example of "enc then add" trick in generate_query
     void enc_then_add();
+
+    void gen_query_test();
 };
