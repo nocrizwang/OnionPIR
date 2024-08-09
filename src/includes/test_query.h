@@ -26,4 +26,7 @@ class PirTest {
     void enc_then_add();
 
     void gen_query_test();
+
+    // experiment another way of creating GSW query and test it on small server 128 * 2
+    void small_server_gsw_test();
 };

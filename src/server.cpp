@@ -352,18 +352,11 @@ std::vector<Key> cuckoo_insert(uint64_t seed1, uint64_t seed2, size_t swap_limit
 
 std::vector<seal::Ciphertext> PirServer::make_query(uint32_t client_id, PirQuery &&query) {
 
-  // Record sum of each types of time
-  int gsw_gen_time = 0;
-  int ext_prod_time = 0;
-
   // Query expansion
-  auto exp_qry_start = CURR_TIME;
   std::vector<seal::Ciphertext> query_vector = expand_query(client_id, query);
-  auto exp_qry_end = CURR_TIME;
 
+  // Evaluate the first dimension
   std::vector<seal::Ciphertext> result = evaluate_first_dim_delayed_mod(query_vector);
-  auto first_dim_end = CURR_TIME;
-  DEBUG_PRINT("NOISE budget after first dimension: " << decryptor_->invariant_noise_budget(result[0]));
 
   int ptr = dims_[0];
   auto l = pir_params_.get_l();
@@ -374,28 +367,13 @@ std::vector<seal::Ciphertext> PirServer::make_query(uint32_t client_id, PirQuery
       ptr += 1;
     }
 
-    auto gsw_gen_start = CURR_TIME;
     // Converting the BFV ciphertext to GSW ciphertext
     GSWCiphertext gsw;
     key_gsw.query_to_gsw(lwe_vector, client_gsw_keys_[client_id], gsw);
 
-    auto gsw_gen_end = CURR_TIME;
-
     // Evaluate the external product
     result = evaluate_gsw_product(result, gsw);
-    auto ext_prod_end = CURR_TIME;  // external product time
-
-    DEBUG_PRINT("Dim " << i << " GSW generation time: \t" << TIME_DIFF(gsw_gen_start, gsw_gen_end) << "\tms");
-    DEBUG_PRINT("Dim " << i << " external product time: \t" << TIME_DIFF(gsw_gen_end, ext_prod_end) << "\tms\n");
-    gsw_gen_time += TIME_DIFF(gsw_gen_start, gsw_gen_end);
-    ext_prod_time += TIME_DIFF(gsw_gen_end, ext_prod_end);
   }
-
-  PRINT_BAR;
-  DEBUG_PRINT("Query expansion time: " << TIME_DIFF(exp_qry_start, exp_qry_end) << " ms");
-  DEBUG_PRINT("Dim 0 time: " << TIME_DIFF(exp_qry_end, first_dim_end) << " ms");
-  DEBUG_PRINT("Total GSW generation time: " << gsw_gen_time << " ms");
-  DEBUG_PRINT("Total External product time: " << ext_prod_time << " ms");
 
   // modulus switching so to reduce the response size.
   evaluator_.mod_switch_to_next_inplace(result[0]); // result.size() == 1.

@@ -43,6 +43,7 @@ GSWCiphertext PirClient::generate_gsw_from_key() {
   inverse_ntt_negacyclic_harvey(secret_key_iter, coeff_mod_count, ntt_tables);
 
   key_gsw.encrypt_plain_to_gsw(sk_ntt, *encryptor_, *decryptor_, gsw_enc);
+  key_gsw.gsw_ntt_negacyclic_harvey(gsw_enc); // transform the GSW ciphertext to NTT form
   return gsw_enc;
 }
 

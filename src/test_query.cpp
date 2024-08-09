@@ -6,14 +6,15 @@
 
 #define EXPERIMENT_ITER 1
 
-const size_t entry_idx = 8933; // fixed index for testing
+const size_t entry_idx = 1; // fixed index for testing
 
 
 void run_query_test() {
   PirTest test;
-  // test.gen_and_expand();
+  test.gen_and_expand();
   // test.enc_then_add();
-  test.gen_query_test();
+  // test.gen_query_test();
+  // test.small_server_gsw_test();
 }
 
 std::unique_ptr<PirServer> PirTest::prepare_server(bool init_db, PirParams &pir_params, PirClient &client, const int client_id) {
@@ -141,12 +142,8 @@ void PirTest::enc_then_add() {
         for (int k = 0; k < coeff_mod_count; k++) {
           auto pad = k * coeff_count;   // We use two moduli for the same gadget value. They are apart by coeff_count.
           __uint128_t mod = coeff_modulus[k].value();
-          // the coeff is (B^0, B^1, ..., B^{l-1}) / bits_per_ciphertext
           auto coef = pow2[k][j] * inv[k] % mod;
           pt[j + pad] = (pt[j + pad] + coef) % mod;
-          if (i == query_indexes.size() - 1) {
-            DEBUG_PRINT("accessing: " << ptr + j + pad << " value: " << pt[j + pad]);
-          }
         }
       }
     }
@@ -154,13 +151,12 @@ void PirTest::enc_then_add() {
   }
 
 
-
   // auto pt = query.data(0);
   // for (int j = 0; j < l; ++j) {
   //   for (int k = 0; k < coeff_mod_count; ++k) {
   //     auto pt_offset = k * coeff_count;
   //     uint128_t mod = coeff_modulus[k].value();
-  //     uint128_t coef = pow2[k][j]; // no inv here.
+  //     uint128_t coef = k*(mod-1);
   //     pt[j + pt_offset] = (pt[j + pt_offset] + coef) % mod;
   //   }
   // }
@@ -168,7 +164,7 @@ void PirTest::enc_then_add() {
   // ======================== Decrypt the query and interpret the result
   std::vector<seal::Plaintext> decrypted_query = client.decrypt_result({query});
   std::cout << "Decrypted in hex: " << decrypted_query[0].to_string() << std::endl;
-  
+
 }
 
 
@@ -242,4 +238,98 @@ void PirTest::gen_query_test() {
   file.close();
   file2.close();
   file3.close();
+}
+
+
+
+void PirTest::small_server_gsw_test() {
+  PRINT_BAR;
+  DEBUG_PRINT("Running: " << __FUNCTION__);
+
+  // ======================== Initialize the client and server
+  PirParams pir_params{256, 2, 256, 12000, 9, 9};
+  pir_params.print_values();
+  PirClient client(pir_params);
+  srand(time(0));
+  const int client_id = rand();
+  std::unique_ptr<PirServer> server = prepare_server(false, pir_params, client, client_id);
+
+  // ======================== We skip the packing unpacking part and directly generate the queries.
+  
+  uint64_t coeff_count = client.params_.poly_modulus_degree(); // 4096
+  uint64_t l = client.pir_params_.get_l();
+  uint64_t base_log2 = client.pir_params_.get_base_log2();
+  size_t first_dim_sz = client.dims_[0];
+  uint64_t plain_modulus = client.params_.plain_modulus().value(); // example: 16777259
+
+  // The number of bits required for the first dimension is equal to the size of the first dimension
+  uint64_t msg_size = first_dim_sz + client.pir_params_.get_l() * (client.dims_.size() - 1);
+  uint64_t bits_per_ciphertext = 1; // padding msg_size to the next power of 2
+
+  while (bits_per_ciphertext < msg_size) {
+    bits_per_ciphertext *= 2;
+  }
+  DEBUG_PRINT(bits_per_ciphertext);
+  
+  // ======================== The first dimension
+  std::vector<seal::Ciphertext> BFV_query;
+  for (size_t i = 0; i < first_dim_sz; ++i) {
+    if (i == 0) {
+      seal::Plaintext plain_one{"1"};
+      DEBUG_PRINT("plain_one: " << plain_one.to_string());
+      seal::Ciphertext ct_one;
+      client.encryptor_->encrypt_symmetric(plain_one, ct_one);
+      BFV_query.push_back(ct_one);
+    }
+    else {
+      seal::Ciphertext ct_zero;
+      client.encryptor_->encrypt_zero_symmetric(ct_zero);
+      BFV_query.push_back(ct_zero);
+    }
+  }
+
+
+  // ======================== The rest dimensions
+  // RGSW gadget
+  uint64_t gadget[l];  // RGSW gadget
+  uint64_t curr_exp = 1;
+  for (int i = 0; i < l; i++) {
+    gadget[i] = curr_exp;
+    // we inverse the exponents to get the correct RGSW gadget
+    // seal::util::try_invert_uint_mod(curr_exp, plain_modulus, gadget[i]);
+    DEBUG_PRINT("gadget[" << i << "]: " << gadget[i]);
+    curr_exp = (curr_exp << base_log2) % plain_modulus; // multiply by B and take mod every time
+  }
+
+  // Now the second dimension. Let's try RGSW(1) now.
+  std::vector<seal::Ciphertext> GSW_query{2*l};
+  int ptr = first_dim_sz;
+  for (int k = 0; k < l; k++) {
+    seal::Plaintext plain_query{"1"};
+    plain_query[0] = gadget[k] % plain_modulus;
+    seal::Ciphertext lower; // lower half of the GSW ciphertext
+    client.encryptor_->encrypt_symmetric(plain_query, lower);
+    // client.evaluator_->transform_from_ntt_inplace(lower);
+
+    // Calculate the upper by multiplying the lower with RGSW(-s)
+    seal::Ciphertext upper;
+    auto neg_secret_key = server->client_gsw_keys_[client_id];
+    data_gsw.external_product(neg_secret_key, lower, lower.size(), upper);
+
+    // put both upper and lower to the GSW query
+    GSW_query[k] = upper;
+    GSW_query[k + l] = lower;
+
+  }
+
+  // ======================== Decrypt the query and interpret the result
+  std::vector<seal::Plaintext> decrypted_query = client.decrypt_result(BFV_query);
+  for (size_t i = 0; i < decrypted_query.size(); i++) {
+    if (decrypted_query[i].is_zero() == false) {
+      DEBUG_PRINT(i << ": " << decrypted_query[i].to_string());
+    }
+  }
+
+  // ======================== Let server use these queries to 
+
 }

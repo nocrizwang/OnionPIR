@@ -8,13 +8,23 @@
 #include <iostream>
 #include <random>
 
-// Parameters for the PIR scheme
+// "Default" Parameters for the PIR scheme
 #define DB_SZ       1 << 15     // Database size <==> Number of plaintexts in the database
 #define NUM_DIM     8           // Number of dimensions of the hypercube
 #define NUM_ENTRIES 1 << 15     // Number of entries in the database
 #define ENTRY_SZ    12000       // Size of each entry in the database
 #define GSW_L       9           // Parameter for GSW scheme. If set to 7 or lower, likely to fail.
 #define GSW_L_KEY   9           // Not sure for now
+
+
+// // Small server parameters for the PIR scheme
+// #define DB_SZ       256     // Database size <==> Number of plaintexts in the database
+// #define NUM_DIM     2           // Number of dimensions of the hypercube
+// #define NUM_ENTRIES 256     // Number of entries in the database
+// #define ENTRY_SZ    12000       // Size of each entry in the database
+// #define GSW_L       9           // Parameter for GSW scheme. If set to 7 or lower, likely to fail.
+// #define GSW_L_KEY   9           // Not sure for now
+
 
 #define EXPERIMENT_ITERATIONS 1
 
@@ -33,13 +43,14 @@ void run_tests() {
 
   // If we compare the following two examples, we do see that external product increase the noise much slower than BFV x BFV.
   // bfv_example();
-  // test_external_product();
+  test_external_product();
 
-  test_pir();
+  // test_pir();
   // test_keyword_pir(); // two server version
   // test_cuckoo_keyword_pir(); // single server version
 
-  // test_negate_poly();
+  // test_plain_to_gsw();
+
   PRINT_BAR;
   DEBUG_PRINT("Tests finished");
 }
@@ -115,18 +126,18 @@ void test_external_product() {
   // vector a is in the context of BFV scheme. 
   // 0, 1, 2, 4 are coeff_index of the term x^i, 
   // the index of the coefficient in the plaintext polynomial
-  a[0] = 123;
-  a[1] = 221;
-  a[2] = 69;
-  a[4] = 23;
+  a[0] = 1;
+  a[1] = 2;
+  a[2] = 3;
+  // a[4] = 23;
 
   DEBUG_PRINT("Vector a: " << a.to_string());
 
   // vector b is in the context of GSW scheme.
 
-  // b[0] = 1;
-  b[0] = 2;
-  b[2] = 5;
+  b[0] = 1;
+  // b[0] = 2;
+  // b[2] = 5;
   
   // print b
   std::string b_result = "Vector b: ";
@@ -142,11 +153,12 @@ void test_external_product() {
             << std::endl;
   GSWCiphertext b_gsw;
   data_gsw.encrypt_plain_to_gsw(b, encryptor_, decryptor_, b_gsw);
+  data_gsw.gsw_ntt_negacyclic_harvey(b_gsw);  // transform b_gsw to NTT form
 
   debug(a_encrypted.data(0), "AENC[0]", coeff_count);
   debug(a_encrypted.data(1), "AENC[1]", coeff_count);
 
-  size_t mult_rounds = 3;
+  size_t mult_rounds = 1;
 
   for (int i = 0; i < mult_rounds; i++) {
     data_gsw.external_product(b_gsw, a_encrypted, coeff_count, a_encrypted);
@@ -431,17 +443,38 @@ void test_cuckoo_keyword_pir() {
 }
 
 
-
-void test_negate_poly() {
+// Understanding the process of encrypting a plain text to GSW ciphertext
+void test_plain_to_gsw() {
   print_func_name(__FUNCTION__);
-  PirParams pir_params(256, 2, 20000, 5, 5, 5);
-  auto context_ = seal::SEALContext(pir_params.get_seal_params());
+
+  // ================== Preparing parameters ==================
+  PirParams pir_params(256, 2, 20000, 5, 15, 15);
+  auto parms = pir_params.get_seal_params();    // This parameter is set to be: seal::scheme_type::bfv
+  auto context_ = seal::SEALContext(parms);   // Then this context_ knows that it is using BFV scheme
   auto evaluator_ = seal::Evaluator(context_);
   auto keygen_ = seal::KeyGenerator(context_);
   auto secret_key_ = keygen_.secret_key();
+  auto encryptor_ = seal::Encryptor(context_, secret_key_);
+  auto decryptor_ = seal::Decryptor(context_, secret_key_);
+  size_t coeff_count = parms.poly_modulus_degree();
+  uint64_t poly_degree = pir_params.get_seal_params().poly_modulus_degree();
 
-  seal::Plaintext plain_secret = secret_key_.data();
-  seal::Plaintext plain_secret_copy = plain_secret;
 
-  DEBUG_PRINT("TODO");
+  // ================== Preparing the plain text ==================
+  std::vector<uint64_t> plain_vec(coeff_count);
+  plain_vec[0] = 1;
+
+  // ================== Encrypting the plain text ==================
+  GSWCiphertext gsw_key;
+
+  // Now we can encrypt the plain text to GSW ciphertext.
+  GSWCiphertext gsw_ct;
+  data_gsw.encrypt_plain_to_gsw(plain_vec, encryptor_, decryptor_, gsw_ct);
+
+  // Now, gsw_ct should contains l many BFV ciphertexts.
+
+
+
+
+
 }

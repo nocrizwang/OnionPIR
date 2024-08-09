@@ -102,7 +102,6 @@ public:
       bits += modulus[i].bit_count();
     } // bits = 72
 
-    // ! uses this in the "pow". But if this base_log2_ means "$\log_2 {B}$", then pow << base_log2_ means pow * B ?
     // The number of bits for representing the largest modulus possible in the given context. See analysis folder.
     // This line rounds bits/l up to the nearest integer. 
     base_log2_ = (bits + l - 1) / l;

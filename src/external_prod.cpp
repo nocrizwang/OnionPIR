@@ -220,8 +220,13 @@ void GSWEval::encrypt_plain_to_gsw(std::vector<uint64_t> const &plaintext,
         }
       }
 
-      seal::Plaintext pt(coeff_count);
-      decryptor.decrypt(cipher, pt);
+      seal::Plaintext plain(coeff_count);
+      decryptor.decrypt(cipher, plain);  // ? Do we need this?
+
+      if (poly_id == 0 && i == 14) {
+        std::cout << "PLAIN: " << std::endl;
+        std::cout << plain.to_string() << std::endl;
+      }
 
       std::vector<uint64_t> row;
       for (int i = 0; i < coeff_count * coeff_mod_count; i++) {
@@ -234,5 +239,5 @@ void GSWEval::encrypt_plain_to_gsw(std::vector<uint64_t> const &plaintext,
     }
   }
 
-  gsw_ntt_negacyclic_harvey(output);
+  // gsw_ntt_negacyclic_harvey(output); // ! this transformation to NTT is put outside of this function for better unit testing.
 }
