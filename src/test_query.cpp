@@ -11,8 +11,8 @@ const size_t entry_idx = 1; // fixed index for testing
 
 void run_query_test() {
   PirTest test;
-  test.gen_and_expand();
-  // test.enc_then_add();
+  // test.gen_and_expand();
+  test.enc_then_add();
   // test.gen_query_test();
   // test.small_server_gsw_test();
 }
@@ -84,86 +84,71 @@ void PirTest::enc_then_add() {
   // ======================== Initialize the client and server
   PirParams pir_params{DB_SZ, NUM_DIM, NUM_ENTRIES, ENTRY_SZ, GSW_L, GSW_L_KEY};
   PirClient client(pir_params);
-  srand(time(0));
-  const int client_id = rand();
-  std::unique_ptr<PirServer> server = prepare_server(false, pir_params, client, client_id);
 
   // ======================== we try a simpler version of the client generate_query
   size_t plaintext_index = client.get_database_plain_index(entry_idx); // fixed index for testing
   std::vector<size_t> query_indexes = client.get_query_indexes(plaintext_index);
-  PRINT_INT_ARRAY("query_indexes", query_indexes.data(), query_indexes.size());
-
-  size_t coeff_count = pir_params.get_seal_params().poly_modulus_degree();
-  seal::Plaintext plain_query{coeff_count};
-
-  PirQuery query;
-  client.encryptor_->encrypt_symmetric(plain_query, query);
 
   auto context_data = client.context_->first_context_data();
   auto coeff_modulus = context_data->parms().coeff_modulus();
   auto coeff_mod_count = coeff_modulus.size();  // 2
-  auto base_log2 = pir_params.get_base_log2();
   auto l = pir_params.get_l();
+  size_t coeff_count = pir_params.get_seal_params().poly_modulus_degree();
 
-  // The number of bits required for the first dimension is equal to the size of the first dimension
-  uint64_t msg_size = client.dims_[0] + client.pir_params_.get_l() * (client.dims_.size() - 1);
-  uint64_t bits_per_ciphertext = 1; // padding msg_size to the next power of 2
+  DEBUG_PRINT("modulus 0: " << coeff_modulus[0].value());
+  DEBUG_PRINT("modulus 1: " << coeff_modulus[1].value());
 
-  while (bits_per_ciphertext < msg_size)
-    bits_per_ciphertext *= 2;
+  const size_t pos = 3;
+  uint64_t bigger_mod = std::max(coeff_modulus[0].value(), coeff_modulus[1].value());
+  uint64_t smaller_mod = std::min(coeff_modulus[0].value(), coeff_modulus[1].value());
+  size_t mod_diff = bigger_mod - smaller_mod;
+  DEBUG_PRINT("mod_diff: " << mod_diff);
 
-  // The following two for-loops calculates the powers for GSW gadgets.
-  __uint128_t inv[coeff_mod_count];
-  for (int k = 0; k < coeff_mod_count; k++) {
-    uint64_t result;
-    seal::util::try_invert_uint_mod(bits_per_ciphertext, coeff_modulus[k], result);
-    inv[k] = result;
-  }
+  std::vector<std::vector<__uint128_t>> gadget = gsw_gadget(l, pir_params.get_base_log2(), coeff_mod_count, coeff_modulus);
 
-  uint128_t pow2[coeff_mod_count][l];
-  for (int i = 0; i < coeff_mod_count; i++) {
-    uint128_t mod = coeff_modulus[i].value();
-    uint128_t pow = 1;
-    for (int j = 0; j < l; j++) { 
-      pow2[i][j] = pow;
-      pow = (pow << base_log2) % mod; // multiply by B and take mod every time
+  auto gadget_diffs = std::vector<uint64_t>(l);
+  for (int i = 0; i < l; i++) {
+    gadget_diffs[i] = gadget[1][i] - gadget[0][i];
+    if (gadget_diffs[i] != 0) {
+      DEBUG_PRINT("gadget_diffs[" << i << "]: " << gadget_diffs[i]);
+      DEBUG_PRINT("gadget_diffs[" << i << "] % mod_diff: " << gadget_diffs[i] % mod_diff);  
+      DEBUG_PRINT("gadget_diffs[" << i << "] / mod_diff: " << gadget_diffs[i] / mod_diff);  
     }
   }
 
-  int ptr = client.dims_[0];
-  for (int i = 1; i < query_indexes.size(); i++) {  // dimensions
-    // we use this if statement to replce the j for loop in Algorithm 1. This is because N_i = 2 for all i > 0
-    // When 0 is requested, we use initial encrypted value of PirQuery query, where the coefficients decrypts to 0. 
-    // When 1 is requested, we add special values to the coefficients of the query so that they decrypts to correct GSW(1) values.
-    if (query_indexes[i] == 1) {
-      // ! pt is a ct_coeff_type *. It points to the current position to be written.
-      auto pt = query.data(0) + ptr;  // Meaning is different from the "pt" in the paper.
-      for (int j = 0; j < l; j++) {
-        for (int k = 0; k < coeff_mod_count; k++) {
-          auto pad = k * coeff_count;   // We use two moduli for the same gadget value. They are apart by coeff_count.
-          __uint128_t mod = coeff_modulus[k].value();
-          auto coef = pow2[k][j] * inv[k] % mod;
-          pt[j + pad] = (pt[j + pad] + coef) % mod;
-        }
-      }
-    }
-    ptr += l;
+  auto to_add = mod_diff * 4096 * 256 * 256; // 46179488366592
+  DEBUG_PRINT("to_add:    \t" << to_add);
+  DEBUG_PRINT("size_t max:\t" << std::numeric_limits<size_t>::max());
+
+  // 46179488366592
+
+
+
+  
+  PirQuery query;
+  client.encryptor_->encrypt_zero_symmetric(query);
+
+  // Say BFV(something) = (a, b), where a, b are two polynomials of size coeff_count * coeff_mod_count.
+  // Conceptually, the degree should be coeff_count.
+  auto a_head = query.data(0); 
+  auto b_head = query.data(1);
+
+  // try manipulating the x^3 coefficient
+  for (int k = 0; k < coeff_mod_count; ++k) {
+    auto mod = coeff_modulus[k].value();
+    auto pad = k * coeff_count;
+    a_head[pos + pad] = (a_head[pos + pad] + (k * to_add % mod)) % mod;
   }
-
-
-  // auto pt = query.data(0);
-  // for (int j = 0; j < l; ++j) {
-  //   for (int k = 0; k < coeff_mod_count; ++k) {
-  //     auto pt_offset = k * coeff_count;
-  //     uint128_t mod = coeff_modulus[k].value();
-  //     uint128_t coef = k*(mod-1);
-  //     pt[j + pt_offset] = (pt[j + pt_offset] + coef) % mod;
-  //   }
-  // }
 
   // ======================== Decrypt the query and interpret the result
-  std::vector<seal::Plaintext> decrypted_query = client.decrypt_result({query});
-  std::cout << "Decrypted in hex: " << decrypted_query[0].to_string() << std::endl;
+  auto decrypted_query = seal::Plaintext{coeff_count};
+  client.decryptor_->decrypt(query, decrypted_query);
+  if (decrypted_query.is_zero()) {
+    std::cout << "Decrypted query is zero." << std::endl;
+  }
+  if (decrypted_query.is_zero() == false) {
+    std::cout << "Decrypted in hex: " << decrypted_query.to_string() << std::endl;
+  }
 
 }
 

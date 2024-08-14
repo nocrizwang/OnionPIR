@@ -110,17 +110,8 @@ PirQuery PirClient::generate_query(std::uint64_t entry_index) {
     inv[k] = result;
   }
 
-  // coeff_mod_count many rows, each row is B^0, B^1, ..., B^{l-1} under different moduli
-  // uint128_t pow2[coeff_mod_count][l + 1];
-  uint128_t pow2[coeff_mod_count][l];
-  for (int i = 0; i < coeff_mod_count; i++) {
-    uint128_t mod = coeff_modulus[i].value();
-    uint128_t pow = 1;
-    for (int j = 0; j < l; j++) {
-      pow2[i][j] = pow;
-      pow = (pow << base_log2) % mod; // multiply by B and take mod every time
-    }
-  }
+  // coeff_mod_count many rows, each row is B^{l-1},, ..., B^0 under different moduli
+  std::vector<std::vector<__uint128_t>> gadget = gsw_gadget(l, base_log2, coeff_mod_count, coeff_modulus);
 
   // This for-loop corresponds to the for-loop in Algorithm 1 from the OnionPIR paper
   int ptr = dims_[0];
@@ -136,7 +127,7 @@ PirQuery PirClient::generate_query(std::uint64_t entry_index) {
           auto pad = k * coeff_count;   // We use two moduli for the same gadget value. They are apart by coeff_count.
           __uint128_t mod = coeff_modulus[k].value();
           // the coeff is (B^0, B^1, ..., B^{l-1}) / bits_per_ciphertext
-          auto coef = pow2[k][j] * inv[k] % mod;
+          auto coef = gadget[k][j] * inv[k] % mod;
           pt[j + pad] = (pt[j + pad] + coef) % mod;
         }
       }

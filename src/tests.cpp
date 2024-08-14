@@ -26,7 +26,7 @@
 // #define GSW_L_KEY   9           // Not sure for now
 
 
-#define EXPERIMENT_ITERATIONS 1
+#define EXPERIMENT_ITERATIONS 10
 
 void print_func_name(std::string func_name) {
 #ifdef _DEBUG
@@ -43,9 +43,9 @@ void run_tests() {
 
   // If we compare the following two examples, we do see that external product increase the noise much slower than BFV x BFV.
   // bfv_example();
-  test_external_product();
+  // test_external_product();
 
-  // test_pir();
+  test_pir();
   // test_keyword_pir(); // two server version
   // test_cuckoo_keyword_pir(); // single server version
 
@@ -101,7 +101,8 @@ void bfv_example() {
 // This is a BFV x GSW example
 void test_external_product() {
   print_func_name(__FUNCTION__);
-  PirParams pir_params(256, 2, 20000, 5, 15, 15);
+  // PirParams pir_params(256, 2, 20000, 5, 15, 15);
+  PirParams pir_params(DB_SZ, NUM_DIM, NUM_ENTRIES, ENTRY_SZ, GSW_L, GSW_L_KEY);
   pir_params.print_values();
   auto parms = pir_params.get_seal_params();    // This parameter is set to be: seal::scheme_type::bfv
   auto context_ = seal::SEALContext(parms);   // Then this context_ knows that it is using BFV scheme
@@ -129,14 +130,11 @@ void test_external_product() {
   a[0] = 1;
   a[1] = 2;
   a[2] = 3;
-  // a[4] = 23;
 
   DEBUG_PRINT("Vector a: " << a.to_string());
 
   // vector b is in the context of GSW scheme.
-
-  b[0] = 1;
-  // b[0] = 2;
+  b[0] = 3;
   // b[2] = 5;
   
   // print b
@@ -169,7 +167,6 @@ void test_external_product() {
   
   // output decrypted result
   std::cout << "External product result: " << result.to_string() << std::endl;
-  // std::cout << "Result non-zero coeff count: " << result.nonzero_coeff_count() << std::endl;
   }
 }
 

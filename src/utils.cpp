@@ -60,3 +60,31 @@ std::string uint128_to_string(__uint128_t value) {
     }
     return oss.str();
 }
+
+
+
+std::vector<std::vector<__uint128_t>> gsw_gadget(size_t l, uint64_t base_log2, size_t coeff_mod_count,
+                const std::vector<seal::Modulus> &coeff_modulus) {
+  // Create RGSW gadget.
+  std::vector<std::vector<__uint128_t>> gadget(coeff_mod_count, std::vector<__uint128_t>(l));
+  for (int i = 0; i < coeff_mod_count; i++) {
+    __uint128_t mod = coeff_modulus[i].value();
+    __uint128_t pow = 1;
+    for (int j = l - 1; j >= 0; j--) {
+      gadget[i][j] = pow;
+      pow = (pow << base_log2) % mod;
+    }
+  }
+
+#ifdef _DEBUG
+  for (int i = 0; i < coeff_mod_count; i++) {
+    std::cout << "Gadget for mod " << i << ": " << std::endl;
+    for (int j = 0; j < l; j++) {
+      std::cout << uint128_to_string(gadget[i][j]) << " ";
+    }
+    std::cout << std::endl;
+  }
+#endif
+
+  return gadget;
+}
