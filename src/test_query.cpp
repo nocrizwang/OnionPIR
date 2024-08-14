@@ -6,13 +6,13 @@
 
 #define EXPERIMENT_ITER 1
 
-const size_t entry_idx = 1; // fixed index for testing
+const size_t entry_idx = 2; // fixed index for testing
 
 
 void run_query_test() {
   PirTest test;
-  // test.gen_and_expand();
-  test.enc_then_add();
+  test.gen_and_expand();
+  // test.enc_then_add();
   // test.gen_query_test();
   // test.small_server_gsw_test();
 }
@@ -116,15 +116,11 @@ void PirTest::enc_then_add() {
     }
   }
 
-  auto to_add = mod_diff * 4096 * 256 * 256; // 46179488366592
+  auto to_add = mod_diff * 4096 * 256;
   DEBUG_PRINT("to_add:    \t" << to_add);
   DEBUG_PRINT("size_t max:\t" << std::numeric_limits<size_t>::max());
 
-  // 46179488366592
 
-
-
-  
   PirQuery query;
   client.encryptor_->encrypt_zero_symmetric(query);
 

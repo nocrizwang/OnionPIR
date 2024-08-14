@@ -76,15 +76,15 @@ std::vector<std::vector<__uint128_t>> gsw_gadget(size_t l, uint64_t base_log2, s
     }
   }
 
-#ifdef _DEBUG
-  for (int i = 0; i < coeff_mod_count; i++) {
-    std::cout << "Gadget for mod " << i << ": " << std::endl;
-    for (int j = 0; j < l; j++) {
-      std::cout << uint128_to_string(gadget[i][j]) << " ";
-    }
-    std::cout << std::endl;
-  }
-#endif
+// #ifdef _DEBUG
+//   for (int i = 0; i < coeff_mod_count; i++) {
+//     std::cout << "Gadget for mod " << i << ": " << std::endl;
+//     for (int j = 0; j < l; j++) {
+//       std::cout << uint128_to_string(gadget[i][j]) << " ";
+//     }
+//     std::cout << std::endl;
+//   }
+// #endif
 
   return gadget;
 }

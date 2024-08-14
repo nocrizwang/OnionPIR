@@ -122,13 +122,15 @@ PirQuery PirClient::generate_query(std::uint64_t entry_index) {
     if (query_indexes[i] == 1) {
       // ! pt is a ct_coeff_type *. It points to the current position to be written.
       auto pt = query.data(0) + ptr;  // Meaning is different from the "pt" in the paper.
-      for (int j = 0; j < l; j++) {
-        for (int k = 0; k < coeff_mod_count; k++) {
-          auto pad = k * coeff_count;   // We use two moduli for the same gadget value. They are apart by coeff_count.
-          __uint128_t mod = coeff_modulus[k].value();
-          // the coeff is (B^0, B^1, ..., B^{l-1}) / bits_per_ciphertext
-          auto coef = gadget[k][j] * inv[k] % mod;
-          pt[j + pad] = (pt[j + pad] + coef) % mod;
+      for (int k = 0; k < l; k++) {
+        for (int mod_id = 0; mod_id < coeff_mod_count; mod_id++) {
+          auto pad = mod_id * coeff_count;   // We use two moduli for the same gadget value. They are apart by coeff_count.
+          if (k < 5) {  // j in [0, 9)
+            __uint128_t mod = coeff_modulus[mod_id].value();
+            // the coeff is (B^0, B^1, ..., B^{l-1}) / bits_per_ciphertext
+            auto coef = gadget[mod_id][k] * inv[mod_id] % mod;
+            pt[k + pad] = (pt[k + pad] + coef) % mod;
+          }
         }
       }
     }
