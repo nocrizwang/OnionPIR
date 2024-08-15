@@ -6,13 +6,13 @@
 
 #define EXPERIMENT_ITER 1
 
-const size_t entry_idx = 2; // fixed index for testing
+const size_t entry_idx = 1; // fixed index for testing
 
 
 void run_query_test() {
   PirTest test;
-  test.gen_and_expand();
-  // test.enc_then_add();
+  // test.gen_and_expand();
+  test.enc_then_add();
   // test.gen_query_test();
   // test.small_server_gsw_test();
 }
@@ -91,6 +91,7 @@ void PirTest::enc_then_add() {
 
   auto context_data = client.context_->first_context_data();
   auto coeff_modulus = context_data->parms().coeff_modulus();
+  auto plain_modulus = context_data->parms().plain_modulus().value();
   auto coeff_mod_count = coeff_modulus.size();  // 2
   auto l = pir_params.get_l();
   size_t coeff_count = pir_params.get_seal_params().poly_modulus_degree();
@@ -99,9 +100,10 @@ void PirTest::enc_then_add() {
   DEBUG_PRINT("modulus 1: " << coeff_modulus[1].value());
 
   const size_t pos = 3;
-  uint64_t bigger_mod = std::max(coeff_modulus[0].value(), coeff_modulus[1].value());
-  uint64_t smaller_mod = std::min(coeff_modulus[0].value(), coeff_modulus[1].value());
+  __uint128_t bigger_mod = std::max(coeff_modulus[0].value(), coeff_modulus[1].value());
+  __uint128_t smaller_mod = std::min(coeff_modulus[0].value(), coeff_modulus[1].value());
   size_t mod_diff = bigger_mod - smaller_mod;
+  __uint128_t mod_mult = bigger_mod * smaller_mod;
   DEBUG_PRINT("mod_diff: " << mod_diff);
 
   std::vector<std::vector<__uint128_t>> gadget = gsw_gadget(l, pir_params.get_base_log2(), coeff_mod_count, coeff_modulus);
@@ -116,8 +118,12 @@ void PirTest::enc_then_add() {
     }
   }
 
-  auto to_add = mod_diff * 4096 * 256;
-  DEBUG_PRINT("to_add:    \t" << to_add);
+  // auto to_add = mod_diff * 4096 * 256;
+  __uint128_t delta = mod_mult / plain_modulus;
+  // __uint128_t delta = 1ULL << 48;
+  __uint128_t message = 15;
+  __uint128_t to_add = delta * message;
+  DEBUG_PRINT("delta:    \t" << uint128_to_string(delta));
   DEBUG_PRINT("size_t max:\t" << std::numeric_limits<size_t>::max());
 
 
@@ -131,9 +137,9 @@ void PirTest::enc_then_add() {
 
   // try manipulating the x^3 coefficient
   for (int k = 0; k < coeff_mod_count; ++k) {
-    auto mod = coeff_modulus[k].value();
-    auto pad = k * coeff_count;
-    a_head[pos + pad] = (a_head[pos + pad] + (k * to_add % mod)) % mod;
+    __uint128_t mod = coeff_modulus[k].value();
+    __uint128_t pad = k * coeff_count;
+    a_head[pos + pad] = (a_head[pos + pad] + (to_add % mod)) % mod;
   }
 
   // ======================== Decrypt the query and interpret the result

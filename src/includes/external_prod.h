@@ -63,6 +63,10 @@ public:
                                     std::vector<seal::Modulus> const &coeff_modulus,
                                     std::vector<std::vector<__uint128_t>> const &gadget);
 
+  /**
+   * @brief Assuming the given GSW is not in NTT form, this function decrypts the GSW ciphertext to a Plaintext.
+   */
+  void decrypt_gsw_to_plain(GSWCiphertext const &gsw, seal::Plaintext& plain, seal::Decryptor &decryptor);
 
   /**
    * @brief Transform the given GSWCipher text from polynomial representation to NTT representation.

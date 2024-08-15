@@ -204,9 +204,11 @@ void GSWEval::encrypt_plain_to_gsw(std::vector<uint64_t> const &plaintext,
 #ifdef _DEBUG
       seal::Plaintext plain(coeff_count);
       decryptor.decrypt(cipher, plain);  // Used for debugging
-      // std::cout << "Plain BFV at poly_id = "<< poly_id;
-      // std::cout << " and k = " << k << ": ";
-      // std::cout << plain.to_string() << std::endl;
+      // if (poly_id == 0) {
+      //   std::cout << "Plain BFV at poly_id = "<< poly_id;
+      //   std::cout << " and k = " << k << ": ";
+      //   std::cout << plain.to_string() << std::endl;
+      // }
 #endif
 }
 
@@ -247,8 +249,9 @@ void GSWEval::encrypt_plain_to_gsw_one_row(
       }
       // Loop through plaintext coefficients
       for (int j = 0; j < coeff_count; j++) {
+        __uint128_t val = (pt[j] * gadget_coef) % mod;
         ct[j + pad] =
-            static_cast<uint64_t>((ct[j + pad] + (__uint128_t(pt[j]) * gadget_coef % mod)) % mod);
+            static_cast<uint64_t>((ct[j + pad] + val) % mod);
       }
     }
 }

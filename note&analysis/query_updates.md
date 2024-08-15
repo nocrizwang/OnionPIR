@@ -80,6 +80,8 @@ seal_params_.plain_modulus().bitcount() = 25
 plain_modulus = 16777259
 inverse of 256 in plain_modulus: 12484640
 context_data->parms().coeff_modulus() = {68585185425, 68585013729}
+68585185425 * 68585013729 / 16777259
+delta = 280374516718114
 
 ```
 

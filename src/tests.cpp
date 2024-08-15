@@ -43,9 +43,9 @@ void run_tests() {
 
   // If we compare the following two examples, we do see that external product increase the noise much slower than BFV x BFV.
   // bfv_example();
-  // test_external_product();
+  test_external_product();
 
-  test_pir();
+  // test_pir();
   // test_keyword_pir(); // two server version
   // test_cuckoo_keyword_pir(); // single server version
 
@@ -134,8 +134,8 @@ void test_external_product() {
   DEBUG_PRINT("Vector a: " << a.to_string());
 
   // vector b is in the context of GSW scheme.
-  b[0] = 3;
-  // b[2] = 5;
+  // b[0] = 3;
+  b[2] = 5;
   
   // print b
   std::string b_result = "Vector b: ";

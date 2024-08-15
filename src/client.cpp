@@ -114,27 +114,27 @@ PirQuery PirClient::generate_query(std::uint64_t entry_index) {
   std::vector<std::vector<__uint128_t>> gadget = gsw_gadget(l, base_log2, coeff_mod_count, coeff_modulus);
 
   // This for-loop corresponds to the for-loop in Algorithm 1 from the OnionPIR paper
-  int ptr = dims_[0];
+  int filled_cnt = dims_[0];  // we have already filled these many coefficients
   for (int i = 1; i < query_indexes.size(); i++) {  // dimensions
     // we use this if statement to replce the j for loop in Algorithm 1. This is because N_i = 2 for all i > 0
     // When 0 is requested, we use initial encrypted value of PirQuery query, where the coefficients decrypts to 0. 
     // When 1 is requested, we add special values to the coefficients of the query so that they decrypts to correct GSW(1) values.
     if (query_indexes[i] == 1) {
       // ! pt is a ct_coeff_type *. It points to the current position to be written.
-      auto pt = query.data(0) + ptr;  // Meaning is different from the "pt" in the paper.
+      auto ptr = query.data(0) + filled_cnt;  // points to the current collection of coefficients to be written
       for (int k = 0; k < l; k++) {
         for (int mod_id = 0; mod_id < coeff_mod_count; mod_id++) {
           auto pad = mod_id * coeff_count;   // We use two moduli for the same gadget value. They are apart by coeff_count.
+          __uint128_t mod = coeff_modulus[mod_id].value();
           if (k < 5) {  // j in [0, 9)
-            __uint128_t mod = coeff_modulus[mod_id].value();
             // the coeff is (B^0, B^1, ..., B^{l-1}) / bits_per_ciphertext
             auto coef = gadget[mod_id][k] * inv[mod_id] % mod;
-            pt[k + pad] = (pt[k + pad] + coef) % mod;
+            ptr[k + pad] = (ptr[k + pad] + coef) % mod;
           }
         }
       }
     }
-    ptr += l;
+    filled_cnt += l;
   }
 
   return query;
