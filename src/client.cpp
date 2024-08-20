@@ -126,11 +126,9 @@ PirQuery PirClient::generate_query(std::uint64_t entry_index) {
         for (int mod_id = 0; mod_id < coeff_mod_count; mod_id++) {
           auto pad = mod_id * coeff_count;   // We use two moduli for the same gadget value. They are apart by coeff_count.
           __uint128_t mod = coeff_modulus[mod_id].value();
-          if (k < 5) {  // j in [0, 9)
-            // the coeff is (B^0, B^1, ..., B^{l-1}) / bits_per_ciphertext
-            auto coef = gadget[mod_id][k] * inv[mod_id] % mod;
-            ptr[k + pad] = (ptr[k + pad] + coef) % mod;
-          }
+          // the coeff is (B^{l-1}, ..., B^0) / bits_per_ciphertext
+          auto coef = gadget[mod_id][k] * inv[mod_id] % mod;
+          ptr[k + pad] = (ptr[k + pad] + coef) % mod;
         }
       }
     }
@@ -139,6 +137,73 @@ PirQuery PirClient::generate_query(std::uint64_t entry_index) {
 
   return query;
 }
+
+
+PirQuery PirClient::ez_generate_query(std::uint64_t entry_index) {
+  // Get the corresponding index of the plaintext in the database
+  size_t plaintext_index = get_database_plain_index(entry_index);
+  std::vector<size_t> query_indexes = get_query_indexes(plaintext_index);
+  PRINT_INT_ARRAY("query_indexes", query_indexes.data(), query_indexes.size());
+  uint64_t coeff_count = params_.poly_modulus_degree(); // 4096
+
+  // The number of bits required for the first dimension is equal to the size of the first dimension
+  uint64_t msg_size = dims_[0] + pir_params_.get_l() * (dims_.size() - 1);
+  uint64_t bits_per_ciphertext = 1; // padding msg_size to the next power of 2
+
+  while (bits_per_ciphertext < msg_size)
+    bits_per_ciphertext *= 2;
+
+  seal::Plaintext plain_query(coeff_count); // we allow 4096 coefficients in the plaintext polynomial to be set as suggested in the paper.
+
+  // Algorithm 1 from the OnionPIR Paper
+  // We set the corresponding coefficient to the inverse so the value of the
+  // expanded ciphertext will be 1
+  uint64_t inverse = 0;
+  uint64_t plain_modulus = params_.plain_modulus().value(); // example: 16777259
+  seal::util::try_invert_uint_mod(bits_per_ciphertext, plain_modulus, inverse);
+
+  // Add the first dimension query vector to the query
+  plain_query[ query_indexes[0] ] = inverse;
+  
+  auto l = pir_params_.get_l();
+  auto base_log2 = pir_params_.get_base_log2();
+  auto context_data = context_->first_context_data();
+  auto coeff_modulus = context_data->parms().coeff_modulus();
+  auto coeff_mod_count = coeff_modulus.size();  // 2 here, not 3. Notice that here we use the first context_data, not all of coeff_modulus are used.
+  __uint128_t ct_modulus = coeff_modulus[0].value() * coeff_modulus[1].value();
+  // __uint128_t delta = ct_modulus / plain_modulus;
+  __uint128_t delta = 1ULL << 48;
+
+  // Create a simple gadget
+  __uint128_t gadget[l];
+  __uint128_t pow = 1;
+  for (int j = l - 1; j >= 0; j--) {
+    gadget[j] = pow;
+    DEBUG_PRINT("Gadget[" << j << "]: " << uint128_to_string(pow));
+    pow = (pow << base_log2);
+  }
+
+  int filled_cnt = dims_[0];
+  for (int i = 1; i < query_indexes.size(); ++i) {
+    if (query_indexes[i] == 1) {
+      auto ptr = plain_query.data() + filled_cnt;
+      for (int k = 0; k < l; ++k) {
+        __uint128_t to_add = (((gadget[k] / delta) % plain_modulus) * inverse ) % plain_modulus;
+        if (to_add == 0) {
+          DEBUG_PRINT("adding 0 when k = " << k);
+        }
+        ptr[k] = (ptr[k] + to_add) % plain_modulus;
+      }
+    }
+    filled_cnt += l;
+  }
+
+  PirQuery query;
+  encryptor_->encrypt_symmetric(plain_query, query);
+  return query;
+}
+
+
 
 /**
  * @brief Generate two queries in cuckoo hashing 

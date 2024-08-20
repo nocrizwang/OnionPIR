@@ -53,8 +53,7 @@ std::string uint128_to_string(__uint128_t value) {
 
     // Print the high part, if it's non-zero, to avoid leading zeros
     if (high != 0) {
-        oss << high;
-        oss << std::setw(20) << std::setfill('0') << low;
+        oss << high << " * 2^64 + " << low;
     } else {
         oss << low;
     }

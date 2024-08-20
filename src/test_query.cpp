@@ -11,8 +11,8 @@ const size_t entry_idx = 1; // fixed index for testing
 
 void run_query_test() {
   PirTest test;
-  // test.gen_and_expand();
-  test.enc_then_add();
+  test.gen_and_expand();
+  // test.enc_then_add();
   // test.gen_query_test();
   // test.small_server_gsw_test();
 }
@@ -44,6 +44,7 @@ void PirTest::gen_and_expand() {
   // size_t entry_idx = rand() % pir_params.get_num_entries();
   DEBUG_PRINT("Client ID: " << client_id << " Entry index: " << entry_idx);
   PirQuery query = client.generate_query(entry_idx);  // a single BFV ciphertext
+  // PirQuery query = client.ez_generate_query(entry_idx);
 
 
   // ======================== server receives the query and expand it

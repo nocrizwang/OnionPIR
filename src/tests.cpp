@@ -43,9 +43,9 @@ void run_tests() {
 
   // If we compare the following two examples, we do see that external product increase the noise much slower than BFV x BFV.
   // bfv_example();
-  test_external_product();
+  // test_external_product();
 
-  // test_pir();
+  test_pir();
   // test_keyword_pir(); // two server version
   // test_cuckoo_keyword_pir(); // single server version
 
