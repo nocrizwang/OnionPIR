@@ -249,7 +249,7 @@ void GSWEval::encrypt_plain_to_gsw_one_row(
       }
       // Loop through plaintext coefficients
       for (int j = 0; j < coeff_count; j++) {
-        __uint128_t val = (pt[j] * gadget_coef) % mod;
+        __uint128_t val = (__uint128_t)pt[j] * gadget_coef % mod;
         ct[j + pad] =
             static_cast<uint64_t>((ct[j + pad] + val) % mod);
       }

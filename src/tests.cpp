@@ -183,7 +183,6 @@ void test_pir() {
   pir_params.print_values();
   PirServer server(pir_params); // Initialize the server with the parameters
 
-
   std::cout << "Initializing server..." << std::endl;
   // Data to be stored in the database.
   std::vector<Entry> data(pir_params.get_num_entries());
@@ -206,7 +205,6 @@ void test_pir() {
     const int client_id = rand();
     DEBUG_PRINT("Client ID: " << client_id);
 
-    // 
     server.decryptor_ = client.get_decryptor();
     server.set_client_galois_key(client_id, client.create_galois_keys());
     server.set_client_gsw_key(client_id, client.generate_gsw_from_key());

@@ -44,8 +44,6 @@ void PirTest::gen_and_expand() {
   // size_t entry_idx = rand() % pir_params.get_num_entries();
   DEBUG_PRINT("Client ID: " << client_id << " Entry index: " << entry_idx);
   PirQuery query = client.generate_query(entry_idx);  // a single BFV ciphertext
-  // PirQuery query = client.ez_generate_query(entry_idx);
-
 
   // ======================== server receives the query and expand it
   auto expanded_query = server->expand_query(client_id, query);  // a vector of BFV ciphertexts

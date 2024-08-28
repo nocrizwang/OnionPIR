@@ -17,9 +17,6 @@ public:
   */
   PirQuery generate_query(std::uint64_t entry_index);
 
-  // A quick test showing that it is impossible to create the pir query first then encrypt it as BFV.
-  PirQuery ez_generate_query(std::uint64_t entry_index);
-
   std::vector<PirQuery> generate_cuckoo_query(uint64_t seed1, uint64_t seed2, uint64_t table_size, Key keyword);
 
   void cuckoo_process_reply(uint64_t seed1, uint64_t seed2, uint64_t table_size, Key keyword, std::vector<seal::Ciphertext> reply1, std::vector<seal::Ciphertext> reply2);
