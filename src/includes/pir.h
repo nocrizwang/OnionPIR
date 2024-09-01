@@ -63,10 +63,9 @@ public:
     }
 
     // First dimension must be a power of 2.
-    // After experiment, when first_dim is 128, the performance is the best.
     dims_.push_back(first_dim); 
     for (int i = 1; i < ndim; i++) {
-      dims_.push_back(2); // ! CHANGED 2 is better than 4 as we can do a trick to reduce the request queries. This is different from the paper.
+      dims_.push_back(2);
     }
 
     // seal parameters requires at lest three parameters: poly_modulus_degree, coeff_modulus, plain_modulus
@@ -79,6 +78,7 @@ public:
       seal_params_.set_coeff_modulus(CoeffModulus::BFVDefault(DatabaseConstants::PolyDegree));
     }
     seal_params_.set_plain_modulus(DatabaseConstants::PlaintextMod);
+    // seal_params_.set_plain_modulus(DatabaseConstants::LargePlaintextMod);
 
     // It is possible to have multiple entries in a plaintext?
     // Plaintext definition in: seal::Plaintext (plaintext.h).
@@ -111,7 +111,7 @@ public:
     data_gsw.base_log2 = base_log2_;
     data_gsw.context = new seal::SEALContext(seal_params_);
 
-    // If l_key == l, then these two are exactly the same.
+    // The l used for RGSW(s) in algorithm 4.
     key_gsw.l = l_key;
     key_gsw.base_log2 = (bits + l_key - 1) / l_key;   // same calculation method 
     key_gsw.context = data_gsw.context;

@@ -13,8 +13,8 @@
 #define NUM_DIM     8           // Number of dimensions of the hypercube
 #define NUM_ENTRIES 1 << 15     // Number of entries in the database
 #define ENTRY_SZ    12000       // Size of each entry in the database
-#define GSW_L       9           // Parameter for GSW scheme. If set to 7 or lower, likely to fail.
-#define GSW_L_KEY   9           // Not sure for now
+#define GSW_L       5           // Parameter for GSW scheme. If set to 7 or lower, likely to fail.
+#define GSW_L_KEY   5           // Not sure for now
 
 
 // // Small server parameters for the PIR scheme
@@ -185,15 +185,7 @@ void test_pir() {
 
   std::cout << "Initializing server..." << std::endl;
   // Data to be stored in the database.
-  std::vector<Entry> data(pir_params.get_num_entries());
-
-  // Generate random data for each entry in the database. 
-  // The entry id will be used as the seed for the random number generator.
-  for (int i = 0; i < pir_params.get_num_entries(); i++) {
-    data[i] = generate_entry(i, pir_params.get_entry_size());
-  }
-  server.set_database(data);
-
+  std::vector<Entry> data = server.gen_data();
 
   // DEBUG_PRINT("Initializing client...");
 
