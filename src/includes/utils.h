@@ -122,3 +122,7 @@ std::string uint128_to_string(__uint128_t value);
 std::vector<std::vector<__uint128_t>>
 gsw_gadget(size_t l, uint64_t base_log2, size_t coeff_mod_count,
            const std::vector<seal::Modulus> &coeff_modulus);
+
+
+// Generate a prime that is bit_width long
+std::uint64_t generate_prime(size_t bit_width);
