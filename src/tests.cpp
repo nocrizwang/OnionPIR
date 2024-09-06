@@ -14,8 +14,8 @@
 #define NUM_DIM     8           // Number of dimensions of the hypercube
 #define NUM_ENTRIES 1 << 15     // Number of entries in the database
 #define ENTRY_SZ    12000       // Size of each entry in the database
-#define GSW_L       5           // Parameter for GSW scheme. If set to 7 or lower, likely to fail.
-#define GSW_L_KEY   5           // Not sure for now
+#define GSW_L       9           // Parameter for GSW scheme. If set to 7 or lower, likely to fail.
+#define GSW_L_KEY   9           // Not sure for now
 
 
 // // Small server parameters for the PIR scheme
@@ -46,8 +46,8 @@ void run_tests() {
   // bfv_example();
   // test_external_product();
 
-  // test_pir();
-  find_best_params();
+  test_pir();
+  // find_best_params();
   // test_keyword_pir(); // two server version
   // test_cuckoo_keyword_pir(); // single server version
 
@@ -182,7 +182,7 @@ void test_pir() {
   auto client_time_sum = 0;
   
   // setting parameters for PIR scheme
-  PirParams pir_params(DB_SZ, NUM_DIM, NUM_ENTRIES, ENTRY_SZ, GSW_L, GSW_L_KEY);
+  PirParams pir_params(DB_SZ, NUM_DIM, NUM_ENTRIES, ENTRY_SZ, GSW_L, GSW_L_KEY, 24397123);
   pir_params.print_values();
   PirServer server(pir_params); // Initialize the server with the parameters
 
@@ -480,8 +480,8 @@ void find_best_params() {
 
   std::uint64_t curr_plain_mod = 0;
 
-  for (size_t curr_l = 3; curr_l < 6; ++curr_l) {
-    for (size_t bit_width = 25; bit_width < 35; ++bit_width) {
+  for (size_t curr_l = 6; curr_l < 10; ++curr_l) {
+    for (size_t bit_width = 25; bit_width < 31; ++bit_width) {
       // getting the current plain_mod
       curr_plain_mod = generate_prime(bit_width);
 
