@@ -221,8 +221,8 @@ std::vector<seal::Ciphertext> PirServer::expand_query(uint32_t client_id,
 
   // The access pattern to this array looks like this: https://raw.githubusercontent.com/helloboyxxx/images-for-notes/master/uPic/expansion.png
   // It helps me to understand this recursion :)
-  std::vector<Ciphertext> expanded_query((size_t)pow(2, log2N));
-  expanded_query[0] = ciphertext;   // c_0 = c in paper
+  std::vector<Ciphertext> cts((size_t)pow(2, log2N));
+  cts[0] = ciphertext;   // c_0 = c in paper
 
   const auto& client_galois_key = client_galois_keys_[client_id]; // used for substitution
 
@@ -231,21 +231,19 @@ std::vector<seal::Ciphertext> PirServer::expand_query(uint32_t client_id,
     int expansion_const = pow(2, a);
 
     for (size_t b = 0; b < expansion_const; b++) {
-      Ciphertext cipher0 = expanded_query[b];   // c_b in paper
+      Ciphertext cipher0 = cts[b];   // c_b in paper
       evaluator_.apply_galois_inplace(cipher0, poly_degree / expansion_const + 1,
                                       client_galois_key); // Subs(c_b, k)
-      Ciphertext cipher1;
-      utils::shift_polynomial(params, cipher0, cipher1,
-                              -expansion_const); // c_1 = c_0 * x^{-2^a}
-      utils::shift_polynomial(params, expanded_query[b],
-                              expanded_query[b + expansion_const],
-                              -expansion_const); // c_{b+2^a} = c_b * x^{-2^a}
-      evaluator_.add_inplace(expanded_query[b], cipher0);  // c_b = c_b + c_0 
-      evaluator_.sub_inplace(expanded_query[b + expansion_const], cipher1); // c_{b + 2^a} = c_{b + 2^a} - c_1
+      Ciphertext temp;
+      evaluator_.sub(cts[b], cipher0, temp);
+      utils::shift_polynomial(params, temp,
+                              cts[b + expansion_const],
+                              -expansion_const);
+      evaluator_.add_inplace(cts[b], cipher0);
     }
   }
 
-  return expanded_query;
+  return cts;
 }
 
 void PirServer::set_client_galois_key(uint32_t client_id, seal::GaloisKeys client_key) {
