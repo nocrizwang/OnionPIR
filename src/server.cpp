@@ -203,41 +203,49 @@ std::vector<seal::Ciphertext> PirServer::evaluate_gsw_product(std::vector<seal::
 }
 
 // TODO: possible optimization: ciphertext use reference
+// This function is using the algorithm 5 in Constant-weight PIR: Single-round Keyword PIR via Constant-weight Equality Operators.
+// https://www.usenix.org/conference/usenixsecurity22/presentation/mahdavi. Basically, the algorithm 3 in Onion-Ring ORAM has some typos.
+// And we can save one Subs(c_b, k) operation in the algorithm 3. The notations of this function follows the constant-weight PIR paper.
 std::vector<seal::Ciphertext> PirServer::expand_query(uint32_t client_id,
                                                       seal::Ciphertext ciphertext) {
   seal::EncryptionParameters params = pir_params_.get_seal_params();
-  std::vector<Ciphertext> expanded_query;
   int poly_degree = params.poly_modulus_degree();   // n in paper. The degree of the polynomial
 
-  // Expand ciphertext into 2^expansion_factor individual ciphertexts (number of bits)
-  int num_cts = dims_[0] + pir_params_.get_l() * (dims_.size() - 1);  // This aligns with the number of coeff packed by the client.
+  // This aligns with the number of coeff used by the client.
+  int num_cts = dims_[0] + pir_params_.get_l() * (dims_.size() - 1);  
 
-  int expansion_factor = 0; // integer log2(num_cts) 
-  while ((1 << expansion_factor) < num_cts) {
-    expansion_factor++;
+  int log2N = 0; // log2(num_cts) rounds up. This is the same as padding num_cts to the next power of 2 then taking the log2.
+  while ((1 << log2N) < num_cts) {
+    log2N++;
   }
-  std::vector<Ciphertext> cipher_vec((size_t)pow(2, expansion_factor));
-  cipher_vec[0] = ciphertext;   // c_0 = c in paper
+
+  // The access pattern to this array looks like this: https://raw.githubusercontent.com/helloboyxxx/images-for-notes/master/uPic/expansion.png
+  // It helps me to understand this recursion :)
+  std::vector<Ciphertext> expanded_query((size_t)pow(2, log2N));
+  expanded_query[0] = ciphertext;   // c_0 = c in paper
 
   const auto& client_galois_key = client_galois_keys_[client_id]; // used for substitution
 
-  for (size_t a = 0; a < expansion_factor; a++) {   // corresponds to i in paper
+  for (size_t a = 0; a < log2N; a++) {
 
-    int expansion_const = pow(2, a);  // 2^a = 2^(i - 1) in paper
+    int expansion_const = pow(2, a);
 
     for (size_t b = 0; b < expansion_const; b++) {
-      Ciphertext cipher0 = cipher_vec[b];   // c_b in paper
+      Ciphertext cipher0 = expanded_query[b];   // c_b in paper
       evaluator_.apply_galois_inplace(cipher0, poly_degree / expansion_const + 1,
-                                      client_galois_key); // Subs(c_b, k) in paper. k = poly_degree / expansion_const + 1 here.
+                                      client_galois_key); // Subs(c_b, k)
       Ciphertext cipher1;
-      utils::shift_polynomial(params, cipher0, cipher1, -expansion_const);
-      utils::shift_polynomial(params, cipher_vec[b], cipher_vec[b + expansion_const], -expansion_const);
-      evaluator_.add_inplace(cipher_vec[b], cipher0);   // c_{2b} = c_b + Subs(c_b, k)
-      evaluator_.sub_inplace(cipher_vec[b + expansion_const], cipher1); // c_{2b+1} = c_b - Subs(c_b, k)
+      utils::shift_polynomial(params, cipher0, cipher1,
+                              -expansion_const); // c_1 = c_0 * x^{-2^a}
+      utils::shift_polynomial(params, expanded_query[b],
+                              expanded_query[b + expansion_const],
+                              -expansion_const); // c_{b+2^a} = c_b * x^{-2^a}
+      evaluator_.add_inplace(expanded_query[b], cipher0);  // c_b = c_b + c_0 
+      evaluator_.sub_inplace(expanded_query[b + expansion_const], cipher1); // c_{b + 2^a} = c_{b + 2^a} - c_1
     }
   }
 
-  return cipher_vec;
+  return expanded_query;
 }
 
 void PirServer::set_client_galois_key(uint32_t client_id, seal::GaloisKeys client_key) {
