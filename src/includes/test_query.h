@@ -26,5 +26,5 @@ class PirTest {
     void enc_then_add();
 
     // Testing the noise budget before and after the query expansion
-    void noise_budget_test();
+    // void noise_budget_test();
 };

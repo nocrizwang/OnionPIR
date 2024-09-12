@@ -231,8 +231,7 @@ std::vector<seal::Ciphertext> PirServer::expand_query(uint32_t client_id,
                                       client_galois_key); // Subs(c_b, k) in paper. k = poly_degree / expansion_const + 1 here.
       Ciphertext cipher1;
       utils::shift_polynomial(params, cipher0, cipher1, -expansion_const);
-      utils::shift_polynomial(params, cipher_vec[b], cipher_vec[b + expansion_const],
-                              -expansion_const);  // TODO: understand this
+      utils::shift_polynomial(params, cipher_vec[b], cipher_vec[b + expansion_const], -expansion_const);
       evaluator_.add_inplace(cipher_vec[b], cipher0);   // c_{2b} = c_b + Subs(c_b, k)
       evaluator_.sub_inplace(cipher_vec[b + expansion_const], cipher1); // c_{2b+1} = c_b - Subs(c_b, k)
     }

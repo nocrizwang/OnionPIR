@@ -13,7 +13,7 @@ void run_query_test() {
   PirTest test;
   // test.gen_and_expand();
   // test.enc_then_add();
-  test.noise_budget_test();
+  // test.noise_budget_test();
 }
 
 std::unique_ptr<PirServer> PirTest::prepare_server(bool init_db, PirParams &pir_params, PirClient &client, const int client_id) {
@@ -157,32 +157,32 @@ void PirTest::enc_then_add() {
 }
 
 
-void PirTest::noise_budget_test() {
-  // ======================== Initialize the client and server
-  PirParams pir_params{DB_SZ, NUM_DIM, NUM_ENTRIES, ENTRY_SZ, GSW_L, GSW_L_KEY};
-  pir_params.print_values();
-  PirClient client(pir_params);
-  srand(time(0));
-  const int client_id = rand();
-  std::unique_ptr<PirServer> server = prepare_server(false, pir_params, client, client_id);
+// void PirTest::noise_budget_test() {
+//   // ======================== Initialize the client and server
+//   PirParams pir_params{DB_SZ, NUM_DIM, NUM_ENTRIES, ENTRY_SZ, GSW_L, GSW_L_KEY};
+//   pir_params.print_values();
+//   PirClient client(pir_params);
+//   srand(time(0));
+//   const int client_id = rand();
+//   std::unique_ptr<PirServer> server = prepare_server(false, pir_params, client, client_id);
 
-  // ======================== Create random queries and expand it
+//   // ======================== Create random queries and expand it
 
-  auto coeff_count = pir_params.get_seal_params().poly_modulus_degree();
-  auto plain_modulus = pir_params.get_seal_params().plain_modulus().value();
-  for (size_t packed_values = 2048; packed_values < 4096; ++packed_values) {
-    seal::Plaintext plain_query(coeff_count);
-    // Create a seal::Plaintext that has packed_values many random values between 0 and plain_modulus
-    for (size_t i = 0; i < packed_values; ++i) {
-      plain_query[i] = rand() % plain_modulus;
-    }
-    PirQuery query; // pt in paper
-    client.encryptor_->encrypt_symmetric(plain_query, query);
-    auto noise_before = client.decryptor_->invariant_noise_budget(query);
-    auto expanded_query = server->expand_query(client_id, query);
-    auto noise_after = client.decryptor_->invariant_noise_budget(expanded_query[10]);
+//   auto coeff_count = pir_params.get_seal_params().poly_modulus_degree();
+//   auto plain_modulus = pir_params.get_seal_params().plain_modulus().value();
+//   for (size_t packed_values = 2048; packed_values < 4096; ++packed_values) {
+//     seal::Ciphertext query;
+//     client.encryptor_->encrypt_zero_symmetric(query);
+//     // Create a seal::Plaintext that has packed_values many random values between 0 and plain_modulus
+//     for (size_t i = 0; i < packed_values; ++i) {
+//       query.data(0)[i] += rand() % plain_modulus;
+//     }
+//     PirQuery query; // pt in paper
+//     auto noise_before = client.decryptor_->invariant_noise_budget(query);
+//     auto expanded_query = server->expand_query(client_id, query);
+//     auto noise_after = client.decryptor_->invariant_noise_budget(expanded_query[10]);
 
-    std::cout << "Packed values: " << packed_values << " Noise budget before: " << noise_before << " Noise budget after: " << noise_after << std::endl;
-  }
+//     std::cout << "Packed values: " << packed_values << " Noise budget before: " << noise_before << " Noise budget after: " << noise_after << std::endl;
+//   }
 
-}
+// }

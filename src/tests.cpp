@@ -182,7 +182,8 @@ void test_pir() {
   auto client_time_sum = 0;
   
   // setting parameters for PIR scheme
-  PirParams pir_params(DB_SZ, NUM_DIM, NUM_ENTRIES, ENTRY_SZ, GSW_L, GSW_L_KEY, 24397123);
+  size_t entry_size = (seal::Modulus(DatabaseConstants::PlaintextMod).bit_count() - 1) * DatabaseConstants::PolyDegree / 8;
+  PirParams pir_params(DB_SZ, NUM_DIM, NUM_ENTRIES, entry_size, GSW_L, GSW_L_KEY);
   pir_params.print_values();
   PirServer server(pir_params); // Initialize the server with the parameters
 
@@ -477,16 +478,20 @@ void find_best_params() {
   // open a file to write the results
   std::ofstream file;
   file.open("plain_mod_test.txt");
+  file << "bit_width, plain_mod, server_time, l, all_success" << std::endl;
 
   std::uint64_t curr_plain_mod = 0;
 
-  for (size_t curr_l = 6; curr_l < 10; ++curr_l) {
-    for (size_t bit_width = 25; bit_width < 31; ++bit_width) {
+  for (size_t curr_l = 5; curr_l < 8; ++curr_l) {
+    for (size_t bit_width = 34; bit_width < 80; ++bit_width) {
       // getting the current plain_mod
       curr_plain_mod = generate_prime(bit_width);
 
+      // calculate the entry size in bytes
+      size_t entry_size = (bit_width - 1) * DatabaseConstants::PolyDegree / 8;
+
       // setting parameters for PIR scheme
-      PirParams pir_params(DB_SZ, NUM_DIM, NUM_ENTRIES, ENTRY_SZ, curr_l,
+      PirParams pir_params(DB_SZ, NUM_DIM, NUM_ENTRIES, 12000, curr_l,
                           curr_l, curr_plain_mod);
       pir_params.print_values();
       PirServer server(pir_params); // Initialize the server with the parameters
@@ -497,6 +502,7 @@ void find_best_params() {
 
       auto server_time_sum = 0;
       bool all_success = true;
+      int end_iter = EXPERIMENT_ITERATIONS;
       // Run the query process many times.
       for (int i = 0; i < EXPERIMENT_ITERATIONS; i++) {
         srand(time(0)); // reset the seed for the random number generator
@@ -531,6 +537,7 @@ void find_best_params() {
           // print a red failure message
           std::cout << "\033[1;31mFailure!\033[0m" << std::endl;
           all_success = false;
+          end_iter = i + 1;
           break;
         }
       }
@@ -538,11 +545,11 @@ void find_best_params() {
       // record the data
       // bit_width, mod, all_success, average server time
       file << bit_width << " " << curr_plain_mod << " "
-          << all_success << " " << server_time_sum / EXPERIMENT_ITERATIONS << " "
-          << " " << curr_l
+          << " " << server_time_sum / end_iter << " "
+          << " " << curr_l << " " << all_success
           << std::endl;
 
-      std::cout << "Average server time: " << server_time_sum / EXPERIMENT_ITERATIONS << " ms" << std::endl;
+      std::cout << "Average server time: " << server_time_sum / end_iter << " ms" << std::endl;
     }
   }
   

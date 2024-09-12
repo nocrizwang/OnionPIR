@@ -48,7 +48,7 @@ public:
       */
   PirParams(uint64_t DBSize, uint64_t ndim, uint64_t num_entries,
             uint64_t entry_size, uint64_t l, uint64_t l_key,
-            size_t plain_mod = 16777259, size_t hashed_key_width = 0,
+            size_t plain_mod = DatabaseConstants::PlaintextMod, size_t hashed_key_width = 0,
             float blowup_factor = 1.0)
       : DBSize_(DBSize),
         seal_params_(seal::EncryptionParameters(seal::scheme_type::bfv)),
@@ -78,16 +78,25 @@ public:
           CoeffModulus::Create(DatabaseConstants::PolyDegree, {60, 60, 60}));
     } else {
       seal_params_.set_coeff_modulus(CoeffModulus::BFVDefault(DatabaseConstants::PolyDegree));
+      // seal_params_.set_coeff_modulus(
+      //     CoeffModulus::Create(DatabaseConstants::PolyDegree, {32, 32, 33}));
     }
     // seal_params_.set_plain_modulus(DatabaseConstants::PlaintextMod);
     seal_params_.set_plain_modulus(plain_mod);
 
+    if (get_num_entries_per_plaintext() == 0) {
+      std::cerr << "Entry size: " << entry_size << std::endl;
+      std::cerr << "Poly degree: " << DatabaseConstants::PolyDegree << std::endl;
+      std::cerr << "bits per coeff: " << get_num_bits_per_coeff() << std::endl;
+      throw std::invalid_argument("Number of entries per plaintext is 0, possibly due to too large entry size");
+    }
+
     // The first part (mult) calculates the number of entries that this database can hold in total. (limits)
     // num_entries is the number of useful entries that the user can use in the database.
     if (DBSize_ * get_num_entries_per_plaintext() < num_entries) {
-      std::cout << "DBSize_ = " << DBSize_ << std::endl;
-      std::cout << "get_num_entries_per_plaintext() = " << get_num_entries_per_plaintext() << std::endl;
-      std::cout << "num_entries = " << num_entries << std::endl;
+      std::cerr << "DBSize_ = " << DBSize_ << std::endl;
+      std::cerr << "get_num_entries_per_plaintext() = " << get_num_entries_per_plaintext() << std::endl;
+      std::cerr << "num_entries = " << num_entries << std::endl;
       throw std::invalid_argument("Number of entries in database is too large");
     }
 
