@@ -2,8 +2,6 @@
 
 #include "database_constants.h"
 #include "external_prod.h"
-#include "utils.h"
-#include "seal/seal.h"
 #include <stdexcept>
 #include <vector>
 

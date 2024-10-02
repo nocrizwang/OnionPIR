@@ -1,14 +1,11 @@
 #include "server.h"
 #include "external_prod.h"
 #include "utils.h"
-#include <bitset>
 #include <cassert>
 #include <cstdlib>
 #include <memory>
 #include <stdexcept>
 #include <unordered_set>
-
-#include <fstream>
 
 // copy the pir_params and set evaluator equal to the context_. 
 // client_galois_keys_, client_gsw_keys_, and db_ are not set yet.
@@ -202,12 +199,11 @@ std::vector<seal::Ciphertext> PirServer::evaluate_gsw_product(std::vector<seal::
   return result_vector;
 }
 
-// TODO: possible optimization: ciphertext use reference
 // This function is using the algorithm 5 in Constant-weight PIR: Single-round Keyword PIR via Constant-weight Equality Operators.
 // https://www.usenix.org/conference/usenixsecurity22/presentation/mahdavi. Basically, the algorithm 3 in Onion-Ring ORAM has some typos.
 // And we can save one Subs(c_b, k) operation in the algorithm 3. The notations of this function follows the constant-weight PIR paper.
 std::vector<seal::Ciphertext> PirServer::expand_query(uint32_t client_id,
-                                                      seal::Ciphertext ciphertext) {
+                                                      seal::Ciphertext &ciphertext) const {
   seal::EncryptionParameters params = pir_params_.get_seal_params();
   int poly_degree = params.poly_modulus_degree();   // n in paper. The degree of the polynomial
 
@@ -224,7 +220,7 @@ std::vector<seal::Ciphertext> PirServer::expand_query(uint32_t client_id,
   std::vector<Ciphertext> cts((size_t)pow(2, log2N));
   cts[0] = ciphertext;   // c_0 = c in paper
 
-  const auto& client_galois_key = client_galois_keys_[client_id]; // used for substitution
+  const auto& client_galois_key = client_galois_keys_.at(client_id); // used for substitution
 
   for (size_t a = 0; a < log2N; a++) {
 
@@ -357,55 +353,58 @@ std::vector<Key> cuckoo_insert(uint64_t seed1, uint64_t seed2, size_t swap_limit
 
 std::vector<seal::Ciphertext> PirServer::make_query(uint32_t client_id, PirQuery &&query) {
 
+  // ========================== Expansion & conversion ==========================
+
   // Query expansion
+  auto expand_start = CURR_TIME;
   std::vector<seal::Ciphertext> query_vector = expand_query(client_id, query);
+  auto expand_end = CURR_TIME;
 
-  // Evaluate the first dimension
-  std::vector<seal::Ciphertext> result = evaluate_first_dim_delayed_mod(query_vector);
-
+  // Reconstruct RGSW queries
+  auto convert_start = CURR_TIME;
   int ptr = dims_[0];
   auto l = pir_params_.get_l();
+  GSWCiphertext gsw_vec[dims_.size() - 1]; // GSW ciphertexts
   for (int i = 1; i < dims_.size(); i++) {
     std::vector<seal::Ciphertext> lwe_vector; // BFV ciphertext, size l * 2. This vector will be reconstructed as a single RGSW ciphertext.
     for (int k = 0; k < l; k++) {
       lwe_vector.push_back(query_vector[ptr]);
       ptr += 1;
     }
-
     // Converting the BFV ciphertext to GSW ciphertext
-    GSWCiphertext gsw;
-    key_gsw.query_to_gsw(lwe_vector, client_gsw_keys_[client_id], gsw);
-
-    // Evaluate the external product
-    result = evaluate_gsw_product(result, gsw);
+    key_gsw.query_to_gsw(lwe_vector, client_gsw_keys_[client_id], gsw_vec[i - 1]);
   }
+  auto convert_end = CURR_TIME;
 
-  // modulus switching so to reduce the response size.
+  // ========================== Evaluations ==========================
+  // Evaluate the first dimension
+  auto first_dim_start = CURR_TIME;
+  std::vector<seal::Ciphertext> result = evaluate_first_dim_delayed_mod(query_vector);
+  auto first_dim_end = CURR_TIME;
+
+  // Evaluate the other dimensions
+  auto other_dim_start = CURR_TIME;
+  for (int i = 1; i < dims_.size(); i++) {
+    result = evaluate_gsw_product(result, gsw_vec[i - 1]);
+  }
+  auto other_dim_end = CURR_TIME;
+
+
+  // ========================== Post-processing ==========================
+  // modulus switching so to reduce the response size by half
   evaluator_.mod_switch_to_next_inplace(result[0]); // result.size() == 1.
-  return result;
-}
 
-std::vector<seal::Ciphertext> PirServer::make_query_delayed_mod(uint32_t client_id,
-                                                                PirQuery query) {
-  std::vector<seal::Ciphertext> first_dim_selection_vector = expand_query(client_id, query);
-
-  std::vector<seal::Ciphertext> result = evaluate_first_dim_delayed_mod(first_dim_selection_vector);
+  // ========================== Timing ==========================
+  DEBUG_PRINT("Expand time: " << TIME_DIFF(expand_start, expand_end) << "ms");
+  DEBUG_PRINT("Convert time: " << TIME_DIFF(convert_start, convert_end) << "ms");
+  DEBUG_PRINT("First dim time: " << TIME_DIFF(first_dim_start, first_dim_end) << "ms");
+  DEBUG_PRINT("Other dim time: " << TIME_DIFF(other_dim_start, other_dim_end) << "ms");
 
   return result;
 }
 
-std::vector<seal::Ciphertext> PirServer::make_query_regular_mod(uint32_t client_id,
-                                                                PirQuery query) {
-  std::vector<seal::Ciphertext> first_dim_selection_vector = expand_query(client_id, query);
-
-  std::vector<seal::Ciphertext> result = evaluate_first_dim(first_dim_selection_vector);
-
-  return result;
-}
 
 void PirServer::set_database(std::vector<Entry> &new_db) {
-  // db_ = Database();  // ! Deleted as this line is duplicated bellow.
-
   // Flattens data into vector of u8s and pads each entry with 0s to entry_size number of bytes.
   // This is actually resizing from entry.size() to pir_params_.get_entry_size()
   // This is redundent if the given entries uses the same pir parameters.
@@ -422,12 +421,9 @@ void PirServer::set_database(std::vector<Entry> &new_db) {
 
   size_t bits_per_coeff = pir_params_.get_num_bits_per_coeff();
   size_t num_coeffs = pir_params_.get_seal_params().poly_modulus_degree();
-  // size_t num_bits_per_plaintext = num_coeffs * bits_per_coeff; // ! Instead of this, we can reuse the function we have previously.
   size_t num_bits_per_plaintext = pir_params_.get_num_bits_per_plaintext();
-  assert(num_bits_per_plaintext == num_coeffs * bits_per_coeff); // sanity check the replaced line above
   size_t num_entries_per_plaintext = pir_params_.get_num_entries_per_plaintext();
   size_t num_plaintexts = new_db.size() / num_entries_per_plaintext;  // number of real plaintexts in the new database
-
 
   db_ = Database(); // create an empty database
   db_.reserve(DBSize_); // reserve space for DBSize_ elements as it will always be padded below.

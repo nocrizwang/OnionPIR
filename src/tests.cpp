@@ -1,7 +1,6 @@
 #include "tests.h"
 #include "external_prod.h"
 #include "pir.h"
-#include "seal/util/scalingvariant.h"
 #include "server.h"
 #include "utils.h"
 #include <cassert>
@@ -14,17 +13,8 @@
 #define NUM_DIM     8           // Number of dimensions of the hypercube
 #define NUM_ENTRIES 1 << 15     // Number of entries in the database
 #define ENTRY_SZ    12000       // Size of each entry in the database
-#define GSW_L       9           // Parameter for GSW scheme. If set to 7 or lower, likely to fail.
-#define GSW_L_KEY   9           // Not sure for now
-
-
-// // Small server parameters for the PIR scheme
-// #define DB_SZ       256     // Database size <==> Number of plaintexts in the database
-// #define NUM_DIM     2           // Number of dimensions of the hypercube
-// #define NUM_ENTRIES 256     // Number of entries in the database
-// #define ENTRY_SZ    12000       // Size of each entry in the database
-// #define GSW_L       9           // Parameter for GSW scheme. If set to 7 or lower, likely to fail.
-// #define GSW_L_KEY   9           // Not sure for now
+#define GSW_L       5           // Parameter for GSW scheme. 
+#define GSW_L_KEY   13          // GSW for query expansion
 
 
 #define EXPERIMENT_ITERATIONS 10
