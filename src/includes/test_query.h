@@ -1,6 +1,5 @@
 #pragma once
 
-#include "external_prod.h"
 #include "pir.h"
 #include "client.h"
 #include "server.h"

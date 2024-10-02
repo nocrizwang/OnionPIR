@@ -146,9 +146,6 @@ void test_external_product() {
   data_gsw.encrypt_plain_to_gsw(b, encryptor_, decryptor_, b_gsw);
   data_gsw.gsw_ntt_negacyclic_harvey(b_gsw);  // transform b_gsw to NTT form
 
-  debug(a_encrypted.data(0), "AENC[0]", coeff_count);
-  debug(a_encrypted.data(1), "AENC[1]", coeff_count);
-
   size_t mult_rounds = 1;
 
   for (int i = 0; i < mult_rounds; i++) {
