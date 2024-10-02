@@ -15,3 +15,6 @@ build
 build/Onion-PIR
 .idea
 cmake-build-debug
+.cache
+temp/
+SEAL

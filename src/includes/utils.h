@@ -2,6 +2,25 @@
 #include "seal/seal.h"
 #include <iostream>
 
+
+#ifdef _DEBUG
+#define PRINT_INT_ARRAY(arr_name, arr, size) \
+    do {                                     \
+        std::cout << arr_name << ": [";      \
+        for (int i = 0; i < size; ++i) {     \
+            std::cout << arr[i];             \
+            if (i < size - 1)                \
+                std::cout << ", ";           \
+        }                                    \
+        std::cout << "]" << std::endl;       \
+    } while (0)
+#endif
+
+#ifdef _BENCHMARK
+#define PRINT_INT_ARRAY(arr_name, arr, size) ;  // do nothing
+#endif
+
+
 template <typename T> std::string to_string(T x) {
   std::string ret;
   if (x == 0) {
@@ -13,19 +32,6 @@ template <typename T> std::string to_string(T x) {
   }
   reverse(ret.begin(), ret.end());
   return ret;
-}
-
-template <typename T> inline void debug(T *ptr, std::string name, int cnt) {
-  // std::cout << name << ": ";
-  // for (int i = 0; i < 10; i++) {
-  //   if (ptr[i] != 0 || ptr[i + cnt] != 0 || ptr[i + cnt + cnt] != 0 ||
-  //       ptr[i + cnt + cnt + cnt] != 0) {
-  //     std::cout << "(" << to_string(ptr[i]) << ", " << to_string(ptr[i + cnt]) << ", "
-  //               << to_string(ptr[i + cnt + cnt]) << ", " << to_string(ptr[i + cnt + cnt + cnt])
-  //               << ") *X^" << i << ' ';
-  //   }
-  // }
-  // std::cout << std::endl;
 }
 
 namespace utils {
@@ -88,3 +94,22 @@ void negacyclic_shift_poly_coeffmod(seal::util::ConstCoeffIter poly, size_t coef
 void shift_polynomial(seal::EncryptionParameters &params, seal::Ciphertext &encrypted,
                       seal::Ciphertext &destination, size_t index);
 } // namespace utils
+
+
+// Inplace calculate the additive inverse of a seal::Plaintext
+void negate_poly_inplace(seal::Plaintext &plain);
+
+// Convert a 128-bit unsigned integer to a string
+std::string uint128_to_string(__uint128_t value);
+
+/**
+ * @brief Construct a RGSW gadget. Notice that the gadget is from large to
+ * small, i.e., the first row is B^(log q / log B -1), the final row is 1.
+ */
+std::vector<std::vector<__uint128_t>>
+gsw_gadget(size_t l, uint64_t base_log2, size_t coeff_mod_count,
+           const std::vector<seal::Modulus> &coeff_modulus);
+
+
+// Generate a prime that is bit_width long
+std::uint64_t generate_prime(size_t bit_width);

@@ -16,7 +16,7 @@ void PirParams::print_values() {
   std::cout << "==============================================================" << std::endl;
   std::cout << "                       PIR PARAMETERS                         " << std::endl;
   std::cout << "==============================================================" << std::endl;
-  std::cout << "  num_entries_                         = " << num_entries_ << std::endl;
+  std::cout << "  num_entries_                        = " << num_entries_ << std::endl;
   std::cout << "  l_                                   = " << l_ << std::endl;
   std::cout << "  base_log2_                           = " << base_log2_ << std::endl;
   std::cout << "  entry_size_                          = " << entry_size_ << std::endl;
@@ -46,6 +46,7 @@ void PirParams::print_values() {
             << seal_params_.coeff_modulus().size() << std::endl;
   std::cout << "  seal_params_.plain_modulus().bitcount()  = "
             << seal_params_.plain_modulus().bit_count() << std::endl;
+
   std::cout << "==============================================================" << std::endl;
 }
 
@@ -66,6 +67,10 @@ size_t PirParams::get_num_bits_per_plaintext() const {
   return get_num_bits_per_coeff() * seal_params_.poly_modulus_degree();
 }
 
+size_t PirParams::get_hashed_key_width() const { return hashed_key_width_; }
+
+float PirParams::get_blowup_factor() const { return blowup_factor_; }
+
 void print_entry(Entry entry) {
   int cnt = 0;
   for (auto &val : entry) {
@@ -76,4 +81,16 @@ void print_entry(Entry entry) {
     }
   }
   std::cout << std::endl;
+}
+
+
+Entry gen_single_key(uint64_t key_id, size_t hashed_key_width) {
+  Entry hashed_key;
+  hashed_key.reserve(hashed_key_width);
+  std::mt19937_64 rng(key_id);
+  // generate the entire entry using random numbers for simplicity.
+  for (int i = 0; i < hashed_key_width; i++) {
+    hashed_key.push_back(rng() % 256);
+  }
+  return hashed_key;
 }
